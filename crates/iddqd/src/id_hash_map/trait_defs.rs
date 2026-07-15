@@ -1,6 +1,8 @@
 use alloc::{boxed::Box, rc::Rc, sync::Arc};
 use core::hash::Hash;
 
+use crate::{Feed, ForLt};
+
 /// An element stored in an [`IdHashMap`].
 ///
 /// This trait is used to define the key type for the map.
@@ -40,40 +42,32 @@ use core::hash::Hash;
 /// [`IdHashMap`]: crate::IdHashMap
 pub trait IdHashItem {
     /// The key type.
-    type Key<'a>: Eq + Hash
-    where
-        Self: 'a;
+    type Key: for<'a> ForLt<Of<'a>: Eq + Hash>;
 
     /// Retrieves the key.
-    fn key(&self) -> Self::Key<'_>;
+    fn key(&self) -> Feed<'_, Self::Key>;
 
     /// Upcasts the key to a shorter lifetime, in effect asserting that the
     /// lifetime `'a` on [`IdHashItem::Key`] is covariant.
     ///
     /// Typically implemented via the [`id_upcast`] macro.
     fn upcast_key<'short, 'long: 'short>(
-        long: Self::Key<'long>,
-    ) -> Self::Key<'short>;
+        long: Feed<'long, Self::Key>,
+    ) -> Feed<'short, Self::Key>;
 }
 
 macro_rules! impl_for_ref {
     ($type:ty) => {
         impl<'b, T: 'b + ?Sized + IdHashItem> IdHashItem for $type {
-            type Key<'a>
-                = T::Key<'a>
-            where
-                Self: 'a;
+            type Key = T::Key;
 
-            fn key(&self) -> Self::Key<'_> {
+            fn key(&self) -> Feed<'_, Self::Key> {
                 (**self).key()
             }
 
             fn upcast_key<'short, 'long: 'short>(
-                long: Self::Key<'long>,
-            ) -> Self::Key<'short>
-            where
-                Self: 'long,
-            {
+                long: Feed<'long, Self::Key>,
+            ) -> Feed<'short, Self::Key> {
                 T::upcast_key(long)
             }
         }
@@ -86,18 +80,15 @@ impl_for_ref!(&'b mut T);
 macro_rules! impl_for_box {
     ($type:ty) => {
         impl<T: ?Sized + IdHashItem> IdHashItem for $type {
-            type Key<'a>
-                = T::Key<'a>
-            where
-                Self: 'a;
+            type Key = T::Key;
 
-            fn key(&self) -> Self::Key<'_> {
+            fn key(&self) -> Feed<'_, Self::Key> {
                 (**self).key()
             }
 
             fn upcast_key<'short, 'long: 'short>(
-                long: Self::Key<'long>,
-            ) -> Self::Key<'short> {
+                long: Feed<'long, Self::Key>,
+            ) -> Feed<'short, Self::Key> {
                 T::upcast_key(long)
             }
         }

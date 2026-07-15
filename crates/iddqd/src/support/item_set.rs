@@ -724,7 +724,7 @@ pub(crate) struct ItemSlotsPtr<'a, T> {
     /// that variance and drop-check work the same as `&'a mut [ItemSlot<T>]`.
     /// This deliberately does not mention `ItemSet<T, A>` so the iterator's
     /// public surface stays allocator-agnostic.
-    _marker: PhantomData<&'a mut [ItemSlot<T>]>,
+    _marker: PhantomData<(&'a mut (), fn(&()) -> &mut [ItemSlot<T>])>,
 }
 
 impl<T> fmt::Debug for ItemSlotsPtr<'_, T> {

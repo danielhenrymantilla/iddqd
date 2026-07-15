@@ -1,8 +1,8 @@
-#[cfg(feature = "std")]
-use iddqd::IdOrdItem;
 use iddqd::{
     BiHashItem, IdHashItem, TriHashItem, bi_upcast, id_upcast, tri_upcast,
 };
+#[cfg(feature = "std")]
+use iddqd::{Feed, ForLt, IdOrdItem};
 use std::{borrow::Cow, path::Path};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -14,12 +14,9 @@ pub struct BorrowedItem<'a> {
 }
 
 impl<'a> IdHashItem for BorrowedItem<'a> {
-    type Key<'k>
-        = &'a str
-    where
-        Self: 'k;
+    type Key = ForLt![<'k> = &'a str];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.key1
     }
 
@@ -28,12 +25,9 @@ impl<'a> IdHashItem for BorrowedItem<'a> {
 
 #[cfg(feature = "std")]
 impl<'a> IdOrdItem for BorrowedItem<'a> {
-    type Key<'k>
-        = &'a str
-    where
-        Self: 'k;
+    type Key = ForLt![<'k> = &'a str];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.key1
     }
 
@@ -41,20 +35,14 @@ impl<'a> IdOrdItem for BorrowedItem<'a> {
 }
 
 impl<'a> BiHashItem for BorrowedItem<'a> {
-    type K1<'k>
-        = &'a str
-    where
-        Self: 'k;
-    type K2<'k>
-        = &'k [u8]
-    where
-        Self: 'k;
+    type K1 = ForLt![<'k> = &'a str];
+    type K2 = ForLt![<'k> = &'k [u8]];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         self.key1
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         &*self.key2
     }
 
@@ -62,28 +50,19 @@ impl<'a> BiHashItem for BorrowedItem<'a> {
 }
 
 impl<'a> TriHashItem for BorrowedItem<'a> {
-    type K1<'k>
-        = &'a str
-    where
-        Self: 'k;
-    type K2<'k>
-        = &'k [u8]
-    where
-        Self: 'k;
-    type K3<'k>
-        = &'a Path
-    where
-        Self: 'k;
+    type K1 = ForLt![<'k> = &'a str];
+    type K2 = ForLt![<'k> = &'k [u8]];
+    type K3 = ForLt![<'k> = &'a Path];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         self.key1
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         &*self.key2
     }
 
-    fn key3(&self) -> Self::K3<'_> {
+    fn key3(&self) -> Feed<'_, Self::K3> {
         self.key3
     }
 

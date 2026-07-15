@@ -1,5 +1,8 @@
 use super::{IdOrdItem, IdOrdMap, RefMut};
-use crate::support::{ItemIndex, borrow::DormantMutRef};
+use crate::{
+    ForLt,
+    support::{ItemIndex, borrow::DormantMutRef},
+};
 use core::{fmt, hash::Hash};
 
 /// An implementation of the Entry API for [`IdOrdMap`].
@@ -51,7 +54,7 @@ impl<'a, T: IdOrdItem> Entry<'a, T> {
     #[inline]
     pub fn or_insert(self, default: T) -> RefMut<'a, T>
     where
-        T::Key<'a>: Hash,
+        for<'b> T::Key: ForLt<Of<'b>: Hash>,
     {
         match self {
             Entry::Occupied(entry) => entry.into_mut(),
@@ -88,7 +91,7 @@ impl<'a, T: IdOrdItem> Entry<'a, T> {
     #[inline]
     pub fn or_insert_with<F: FnOnce() -> T>(self, default: F) -> RefMut<'a, T>
     where
-        T::Key<'a>: Hash,
+        for<'b> T::Key: ForLt<Of<'b>: Hash>,
     {
         match self {
             Entry::Occupied(entry) => entry.into_mut(),
@@ -102,12 +105,12 @@ impl<'a, T: IdOrdItem> Entry<'a, T> {
     pub fn and_modify<F>(self, f: F) -> Self
     where
         F: FnOnce(RefMut<'_, T>),
-        T::Key<'a>: Hash,
+        for<'b> T::Key: ForLt<Of<'b>: Hash>,
     {
         match self {
             Entry::Occupied(mut entry) => {
                 {
-                    let (state, hash, dormant) = {
+                    let (state, hash, item) = {
                         // SAFETY: The safety assumption behind
                         // `OccupiedEntry::new` guarantees that the original
                         // reference to the map is not used at this point.
@@ -117,14 +120,14 @@ impl<'a, T: IdOrdItem> Entry<'a, T> {
                             .get_mut(entry.index)
                             .expect("index is valid");
 
-                        let (item, dormant) = DormantMutRef::new(item);
+                        let item = item;
                         let hash = map.tables.make_hash(item);
                         let state = map.tables.state().clone();
-                        (state, hash, dormant)
+                        (state, hash, item)
                     };
 
                     // SAFETY: the item above is not used after this point.
-                    let awakened_item = unsafe { dormant.awaken() };
+                    let awakened_item = item;
                     let ref_mut = RefMut::new(state, hash, awakened_item);
                     f(ref_mut);
                 }
@@ -173,7 +176,7 @@ impl<'a, T: IdOrdItem> VacantEntry<'a, T> {
     /// value.
     pub fn insert(self, value: T) -> RefMut<'a, T>
     where
-        T::Key<'a>: Hash,
+        for<'b> T::Key: ForLt<Of<'b>: Hash>,
     {
         // SAFETY: The safety assumption behind `Self::new` guarantees that the
         // original reference to the map is not used at this point.
@@ -249,7 +252,7 @@ impl<'a, T: IdOrdItem> OccupiedEntry<'a, T> {
     /// `Entry` value, see [`into_mut`](Self::into_mut).
     pub fn get_mut<'b>(&'b mut self) -> RefMut<'b, T>
     where
-        T::Key<'b>: Hash,
+        for<'c> T::Key: ForLt<Of<'c>: Hash>,
     {
         // SAFETY: The safety assumption behind `Self::new` guarantees that the
         // original reference to the map is not used at this point.
@@ -276,7 +279,7 @@ impl<'a, T: IdOrdItem> OccupiedEntry<'a, T> {
     /// [`get_mut`](Self::get_mut).
     pub fn into_mut(self) -> RefMut<'a, T>
     where
-        T::Key<'a>: Hash,
+        for<'b> T::Key: ForLt<Of<'b>: Hash>,
     {
         // SAFETY: The safety assumption behind `Self::new` guarantees that the
         // original reference to the map is not used at this point.

@@ -376,6 +376,43 @@
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![warn(missing_docs)]
 
+/// TODO
+pub trait ForLt {
+    /// TODO
+    type Of<'lt>;
+}
+
+/// TODO
+pub trait WithLifetime<'lt> {
+    /// TODO
+    type Of;
+}
+
+/// TODO
+pub type Feed<'lt, T> = <T as ForLt>::Of<'lt>;
+
+impl<T: ?Sized + for<'any> WithLifetime<'any>> ForLt for T {
+    type Of<'lt> = <T as WithLifetime<'lt>>::Of;
+}
+
+impl<T: ?Sized + ForLt> ForLt for ::core::marker::PhantomData<fn() -> T> {
+    type Of<'lt> = T::Of<'lt>;
+}
+
+/// TODO
+/** <!-- rust-analyzer delimiter nudge
+ * ```rust ,ignore
+ * ForLt![];
+ * ``` --> */
+#[macro_export]
+macro_rules! ForLt {
+    ( <$lt:lifetime> = $T:ty $(,)? ) => (
+        ::core::marker::PhantomData<
+            fn() -> dyn for<$lt> $crate::WithLifetime<$lt, Of = $T>,
+        >
+    );
+}
+
 #[cfg_attr(not(feature = "std"), macro_use)] // for `format!`
 extern crate alloc;
 #[cfg(feature = "std")]

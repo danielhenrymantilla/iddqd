@@ -1,6 +1,6 @@
 use iddqd::{
-    BiHashItem, BiHashMap, IdHashItem, IdHashMap, TriHashItem, TriHashMap,
-    bi_hash_map, bi_upcast,
+    BiHashItem, BiHashMap, Feed, ForLt, IdHashItem, IdHashMap, TriHashItem,
+    TriHashMap, bi_hash_map, bi_upcast,
     errors::DuplicateItem,
     id_hash_map, id_upcast,
     internal::{ValidateCompact, ValidationError},
@@ -293,9 +293,9 @@ impl<'a> TestKey3<'a> {
 impl_test_key_traits!(TestKey3<'_>);
 
 impl IdHashItem for TestItem {
-    type Key<'a> = TestKey1<'a>;
+    type Key = ForLt![<'a> = TestKey1<'a>];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         TestKey1::new(&self.key1)
     }
 
@@ -306,9 +306,9 @@ impl IdHashItem for TestItem {
 impl IdOrdItem for TestItem {
     // A bit weird to return a reference to a u8, but this makes sure
     // reference-based keys work properly.
-    type Key<'a> = TestKey1<'a>;
+    type Key = ForLt![<'a> = TestKey1<'a>];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         TestKey1::new(&self.key1).with_chaos(self.chaos.key1_chaos.clone())
     }
 
@@ -316,14 +316,14 @@ impl IdOrdItem for TestItem {
 }
 
 impl BiHashItem for TestItem {
-    type K1<'a> = TestKey1<'a>;
-    type K2<'a> = TestKey2;
+    type K1 = ForLt![<'a> = TestKey1<'a>];
+    type K2 = ForLt![<'a> = TestKey2];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         TestKey1::new(&self.key1).with_chaos(self.chaos.key1_chaos.clone())
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         TestKey2::new(self.key2).with_chaos(self.chaos.key2_chaos.clone())
     }
 
@@ -331,19 +331,19 @@ impl BiHashItem for TestItem {
 }
 
 impl TriHashItem for TestItem {
-    type K1<'a> = TestKey1<'a>;
-    type K2<'a> = TestKey2;
-    type K3<'a> = TestKey3<'a>;
+    type K1 = ForLt![<'a> = TestKey1<'a>];
+    type K2 = ForLt![<'a> = TestKey2];
+    type K3 = ForLt![<'a> = TestKey3<'a>];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         TestKey1::new(&self.key1).with_chaos(self.chaos.key1_chaos.clone())
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         TestKey2::new(self.key2).with_chaos(self.chaos.key2_chaos.clone())
     }
 
-    fn key3(&self) -> Self::K3<'_> {
+    fn key3(&self) -> Feed<'_, Self::K3> {
         TestKey3::new(&self.key3).with_chaos(self.chaos.key3_chaos.clone())
     }
 
@@ -355,21 +355,19 @@ pub enum MapKind {
     Hash,
 }
 
+pub(crate) use seal::Is;
+mod seal {
+    pub trait Is<Self_> {}
+    impl<T> Is<Self> for T {}
+}
+
 /// Represents a map of `TestEntry` values. Used for generic tests and assertions.
 pub trait ItemMap<T>: Clone {
-    type K1<'a>
-    where
-        T: 'a;
-    type RefMut<'a>: IntoRef<'a, T>
-    where
-        Self: 'a;
-    type Iter<'a>: Iterator<Item = &'a T>
-    where
-        Self: 'a,
-        T: 'a;
-    type IterMut<'a>: Iterator<Item = Self::RefMut<'a>>
-    where
-        Self: 'a;
+    type K1: ForLt;
+    type RefMut: for<'a> ForLt<Of<'a>: IntoRef<'a, T>>;
+    type Iter: for<'a> ForLt<Of<'a> : Iterator<Item: Is<&'a T>>>;
+    type IterMut: for<'a> ForLt// Of<'a>: Iterator // <Item: Is<Feed<'a, Self::RefMut>>>>
+    ;
     type IntoIter: Iterator<Item = T>;
 
     fn map_kind() -> MapKind;
@@ -399,28 +397,17 @@ pub trait ItemMap<T>: Clone {
     where
         T: fmt::Debug;
     fn insert_unique(&mut self, value: T) -> Result<(), DuplicateItem<T, &T>>;
-    fn iter(&self) -> Self::Iter<'_>;
-    fn iter_mut(&mut self) -> Self::IterMut<'_>;
+    fn iter(&self) -> Feed<'_, Self::Iter>;
+    fn iter_mut(&mut self) -> Feed<'_, Self::IterMut>;
     fn into_iter(self) -> Self::IntoIter;
 }
 
 impl<T: Clone + BiHashItem> ItemMap<T> for BiHashMap<T, HashBuilder, Alloc> {
-    type K1<'a>
-        = T::K1<'a>
-    where
-        T: 'a;
-    type RefMut<'a>
-        = bi_hash_map::RefMut<'a, T, HashBuilder>
-    where
-        T: 'a;
-    type Iter<'a>
-        = bi_hash_map::Iter<'a, T>
-    where
-        T: 'a;
-    type IterMut<'a>
-        = bi_hash_map::IterMut<'a, T, HashBuilder, Alloc>
-    where
-        T: 'a;
+    type K1 = T::K1;
+    type RefMut = ForLt![<'a> = bi_hash_map::RefMut<'a, T, HashBuilder>];
+    type Iter = ForLt![<'a> = bi_hash_map::Iter<'a, T>];
+    type IterMut =
+        ForLt![<'a> = bi_hash_map::IterMut<'a, T, HashBuilder, Alloc>];
     type IntoIter = bi_hash_map::IntoIter<T, Alloc>;
 
     fn map_kind() -> MapKind {
@@ -507,11 +494,11 @@ impl<T: Clone + BiHashItem> ItemMap<T> for BiHashMap<T, HashBuilder, Alloc> {
         self.insert_unique(value)
     }
 
-    fn iter(&self) -> Self::Iter<'_> {
+    fn iter(&self) -> Feed<'_, Self::Iter> {
         self.iter()
     }
 
-    fn iter_mut(&mut self) -> Self::IterMut<'_> {
+    fn iter_mut(&mut self) -> Feed<'_, Self::IterMut> {
         self.iter_mut()
     }
 
@@ -524,22 +511,13 @@ impl<T> ItemMap<T> for IdHashMap<T, HashBuilder, Alloc>
 where
     T: IdHashItem + Clone,
 {
-    type K1<'a>
-        = T::Key<'a>
-    where
-        T: 'a;
-    type RefMut<'a>
-        = id_hash_map::RefMut<'a, T, HashBuilder>
-    where
-        T: 'a;
-    type Iter<'a>
-        = id_hash_map::Iter<'a, T>
-    where
-        T: 'a;
-    type IterMut<'a>
-        = id_hash_map::IterMut<'a, T, HashBuilder, Alloc>
-    where
-        T: 'a;
+    type K1 = T::Key;
+    type RefMut = ForLt![<'a>
+        = id_hash_map::RefMut<'a, T, HashBuilder>];
+    type Iter = ForLt![<'a>
+        = id_hash_map::Iter<'a, T>];
+    type IterMut = ForLt![<'a>
+        = id_hash_map::IterMut<'a, T, HashBuilder, Alloc>];
     type IntoIter = id_hash_map::IntoIter<T, Alloc>;
 
     fn map_kind() -> MapKind {
@@ -626,11 +604,11 @@ where
         self.insert_unique(value)
     }
 
-    fn iter(&self) -> Self::Iter<'_> {
+    fn iter(&self) -> Feed<'_, Self::Iter> {
         self.iter()
     }
 
-    fn iter_mut(&mut self) -> Self::IterMut<'_> {
+    fn iter_mut(&mut self) -> Feed<'_, Self::IterMut> {
         self.iter_mut()
     }
 
@@ -643,24 +621,12 @@ where
 impl<T> ItemMap<T> for IdOrdMap<T>
 where
     T: IdOrdItem + Clone,
-    for<'k> T::Key<'k>: std::hash::Hash,
+    for<'a> T::Key: ForLt<Of<'a>: std::hash::Hash>,
 {
-    type K1<'a>
-        = T::Key<'a>
-    where
-        T: 'a;
-    type RefMut<'a>
-        = id_ord_map::RefMut<'a, T>
-    where
-        T: 'a;
-    type Iter<'a>
-        = id_ord_map::Iter<'a, T>
-    where
-        T: 'a;
-    type IterMut<'a>
-        = id_ord_map::IterMut<'a, T>
-    where
-        T: 'a;
+    type K1 = T::Key;
+    type RefMut = ForLt![<'a> = id_ord_map::RefMut<'a, T>];
+    type Iter = ForLt![<'a> = id_ord_map::Iter<'a, T>];
+    type IterMut = ForLt![<'a> = id_ord_map::IterMut<'static, T>];
     type IntoIter = id_ord_map::IntoIter<T>;
 
     fn map_kind() -> MapKind {
@@ -722,11 +688,11 @@ where
         self.insert_unique(value)
     }
 
-    fn iter(&self) -> Self::Iter<'_> {
+    fn iter(&self) -> Feed<'_, Self::Iter> {
         self.iter()
     }
 
-    fn iter_mut(&mut self) -> Self::IterMut<'_> {
+    fn iter_mut(&mut self) -> Feed<'_, Self::IterMut> {
         self.iter_mut()
     }
 
@@ -739,22 +705,13 @@ impl<T> ItemMap<T> for TriHashMap<T, HashBuilder, Alloc>
 where
     T: TriHashItem + Clone,
 {
-    type K1<'a>
-        = T::K1<'a>
-    where
-        T: 'a;
-    type RefMut<'a>
-        = tri_hash_map::RefMut<'a, T, HashBuilder>
-    where
-        T: 'a;
-    type Iter<'a>
-        = tri_hash_map::Iter<'a, T>
-    where
-        T: 'a;
-    type IterMut<'a>
-        = tri_hash_map::IterMut<'a, T, HashBuilder, Alloc>
-    where
-        T: 'a;
+    type K1 = T::K1;
+    type RefMut = ForLt![<'a>
+        = tri_hash_map::RefMut<'a, T, HashBuilder>];
+    type Iter = ForLt![<'a>
+        = tri_hash_map::Iter<'a, T>];
+    type IterMut = ForLt![<'a>
+        = tri_hash_map::IterMut<'a, T, HashBuilder, Alloc>];
     type IntoIter = tri_hash_map::IntoIter<T, Alloc>;
 
     fn map_kind() -> MapKind {
@@ -841,11 +798,11 @@ where
         self.insert_unique(value)
     }
 
-    fn iter(&self) -> Self::Iter<'_> {
+    fn iter(&self) -> Feed<'_, Self::Iter> {
         self.iter()
     }
 
-    fn iter_mut(&mut self) -> Self::IterMut<'_> {
+    fn iter_mut(&mut self) -> Feed<'_, Self::IterMut> {
         self.iter_mut()
     }
 
@@ -877,7 +834,7 @@ impl<'a, T: IdHashItem> IntoRef<'a, T>
 #[cfg(feature = "std")]
 impl<'a, T: IdOrdItem> IntoRef<'a, T> for id_ord_map::RefMut<'a, T>
 where
-    T::Key<'a>: std::hash::Hash,
+    T::Key: ForLt<Of<'a>: std::hash::Hash>,
 {
     fn into_ref(self) -> &'a T {
         self.into_ref()

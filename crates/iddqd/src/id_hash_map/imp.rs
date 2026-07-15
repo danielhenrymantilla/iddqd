@@ -3,7 +3,7 @@ use super::{
     VacantEntry, tables::IdHashMapTables,
 };
 use crate::{
-    DefaultHashBuilder,
+    DefaultHashBuilder, Feed,
     errors::DuplicateItem,
     internal::{ValidateCompact, ValidationError},
     support::{
@@ -1075,7 +1075,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// ```
     pub fn contains_key<'a, Q>(&'a self, key1: &Q) -> bool
     where
-        Q: ?Sized + Hash + Equivalent<T::Key<'a>>,
+        Q: ?Sized + Hash + Equivalent<Feed<'a, T::Key>>,
     {
         self.find_index(key1).is_some()
     }
@@ -1111,7 +1111,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// ```
     pub fn get<'a, Q>(&'a self, key: &Q) -> Option<&'a T>
     where
-        Q: ?Sized + Hash + Equivalent<T::Key<'a>>,
+        Q: ?Sized + Hash + Equivalent<Feed<'a, T::Key>>,
     {
         self.find_index(key).map(|ix| &self.items[ix])
     }
@@ -1151,19 +1151,12 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// ```
     pub fn get_mut<'a, Q>(&'a mut self, key: &Q) -> Option<RefMut<'a, T, S>>
     where
-        Q: ?Sized + Hash + Equivalent<T::Key<'a>>,
+        Q: ?Sized + Hash + for<'b> Equivalent<Feed<'b, T::Key>>,
     {
-        let (dormant_map, index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let index = map.find_index(key)?;
-            (dormant_map, index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-        let item = &mut awakened_map.items[index];
-        let state = awakened_map.tables.state.clone();
-        let hashes = awakened_map.tables.make_hash(item);
+        let index = self.find_index(key)?;
+        let item = &mut self.items[index];
+        let state = self.tables.state.clone();
+        let hashes = self.tables.make_hash(item);
         Some(RefMut::new(state, hashes, item))
     }
 
@@ -1202,7 +1195,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// ```
     pub fn remove<'a, Q>(&'a mut self, key: &Q) -> Option<T>
     where
-        Q: ?Sized + Hash + Equivalent<T::Key<'a>>,
+        Q: ?Sized + Hash + Equivalent<Feed<'a, T::Key>>,
     {
         let (dormant_map, remove_index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -1248,7 +1241,10 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// assert_eq!(map.len(), 2);
     /// # }
     /// ```
-    pub fn entry<'a>(&'a mut self, key: T::Key<'_>) -> Entry<'a, T, S, A> {
+    pub fn entry<'a>(
+        &'a mut self,
+        key: Feed<'_, T::Key>,
+    ) -> Entry<'a, T, S, A> {
         // Why does this always take an owned key? Well, it would seem like we
         // should be able to pass in any Q that is equivalent. That results in
         // *this* code compiling fine, but callers have trouble using it because
@@ -1256,8 +1252,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
         // rather than a shorter lifetime.
         //
         // By accepting owned keys, we can use the upcast functions to convert
-        // them to a shorter lifetime (so this function accepts T::Key<'_>
-        // rather than T::Key<'a>).
+        // them to a shorter lifetime (so this function accepts `Feed<'_, T::Key>`
+        // rather than `Feed<'a, T::Key>`).
         //
         // Really, the solution here is to allow GATs to require covariant
         // parameters. If that were allowed, the borrow checker should be able
@@ -1398,7 +1394,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
 
     fn find_index<'a, Q>(&'a self, k: &Q) -> Option<ItemIndex>
     where
-        Q: Hash + Equivalent<T::Key<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::Key>> + ?Sized,
     {
         self.tables
             .key_to_item
@@ -1409,7 +1405,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
         self.tables.make_hash(item)
     }
 
-    fn make_key_hash(&self, key: &T::Key<'_>) -> MapHash {
+    fn make_key_hash(&self, key: &Feed<'_, T::Key>) -> MapHash {
         self.tables.make_key_hash::<T>(key)
     }
 
@@ -1531,7 +1527,7 @@ impl<'a, T, S: Clone + BuildHasher, A: Allocator> fmt::Debug
     for IdHashMap<T, S, A>
 where
     T: IdHashItem + fmt::Debug,
-    T::Key<'a>: fmt::Debug,
+    Feed<'a, T::Key>: fmt::Debug,
     T: 'a,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1550,8 +1546,9 @@ where
             // * We only use key within the scope of this block before immediately
             //   dropping it. In particular, map.entry calls key.fmt() without
             //   holding a reference to it.
-            let key: T::Key<'a> =
-                unsafe { core::mem::transmute::<T::Key<'_>, T::Key<'a>>(key) };
+            let key: Feed<'a, T::Key> = unsafe {
+                core::mem::transmute::<Feed<'_, T::Key>, Feed<'a, T::Key>>(key)
+            };
 
             map.entry(&key, item);
         }

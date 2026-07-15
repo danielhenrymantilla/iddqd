@@ -4,13 +4,18 @@ use crate::{
     errors::{DuplicateItem, TryReserveError},
     internal::ValidationError,
     support::{
-        ItemIndex,
-        alloc::{Allocator, Global, global_alloc},
-        borrow::DormantMutRef,
-        fmt_utils::StrDisplayAsDebug,
-        hash_table,
-        item_set::ItemSet,
-        map_hash::MapHash,
+        DefaultHashBuilder, Feed, ForLt, TriHashItem,
+        errors::DuplicateItem,
+        internal::ValidationError,
+        support::{
+            ItemIndex,
+            alloc::{Allocator, Global, global_alloc},
+            borrow::DormantMutRef,
+            fmt_utils::StrDisplayAsDebug,
+            hash_table,
+            item_set::ItemSet,
+            map_hash::MapHash,
+        },
     },
 };
 use alloc::{collections::BTreeSet, vec::Vec};
@@ -1599,9 +1604,9 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
         key3: &Q3,
     ) -> bool
     where
-        Q1: Hash + Equivalent<T::K1<'a>> + ?Sized,
-        Q2: Hash + Equivalent<T::K2<'a>> + ?Sized,
-        Q3: Hash + Equivalent<T::K3<'a>> + ?Sized,
+        Q1: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
+        Q2: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
+        Q3: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
     {
         self.get_unique(key1, key2, key3).is_some()
     }
@@ -1667,9 +1672,9 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
         key3: &Q3,
     ) -> Option<&'a T>
     where
-        Q1: Hash + Equivalent<T::K1<'a>> + ?Sized,
-        Q2: Hash + Equivalent<T::K2<'a>> + ?Sized,
-        Q3: Hash + Equivalent<T::K3<'a>> + ?Sized,
+        Q1: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
+        Q2: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
+        Q3: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
     {
         let index = self.find1_index(key1)?;
         let item = &self.items[index];
@@ -1741,9 +1746,9 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
         key3: &Q3,
     ) -> Option<RefMut<'a, T, S>>
     where
-        Q1: Hash + Equivalent<T::K1<'a>> + ?Sized,
-        Q2: Hash + Equivalent<T::K2<'a>> + ?Sized,
-        Q3: Hash + Equivalent<T::K3<'a>> + ?Sized,
+        Q1: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
+        Q2: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
+        Q3: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
     {
         let (dormant_map, index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -1826,9 +1831,9 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
         key3: &Q3,
     ) -> Option<T>
     where
-        Q1: Hash + Equivalent<T::K1<'a>> + ?Sized,
-        Q2: Hash + Equivalent<T::K2<'a>> + ?Sized,
-        Q3: Hash + Equivalent<T::K3<'a>> + ?Sized,
+        Q1: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
+        Q2: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
+        Q3: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
     {
         let (dormant_map, remove_index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -1895,7 +1900,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn contains_key1<'a, Q>(&'a self, key1: &Q) -> bool
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         self.find1_index(key1).is_some()
     }
@@ -1948,7 +1953,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn get1<'a, Q>(&'a self, key1: &Q) -> Option<&'a T>
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         self.find1(key1)
     }
@@ -2004,7 +2009,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn get1_mut<'a, Q>(&'a mut self, key1: &Q) -> Option<RefMut<'a, T, S>>
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         let (dormant_map, index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -2070,7 +2075,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn remove1<'a, Q>(&'a mut self, key1: &Q) -> Option<T>
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         let (dormant_map, remove_index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -2132,7 +2137,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn contains_key2<'a, Q>(&'a self, key2: &Q) -> bool
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         self.find2_index(key2).is_some()
     }
@@ -2185,7 +2190,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn get2<'a, Q>(&'a self, key2: &Q) -> Option<&'a T>
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         self.find2(key2)
     }
@@ -2241,7 +2246,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn get2_mut<'a, Q>(&'a mut self, key2: &Q) -> Option<RefMut<'a, T, S>>
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         let (dormant_map, index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -2307,7 +2312,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn remove2<'a, Q>(&'a mut self, key2: &Q) -> Option<T>
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         let (dormant_map, remove_index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -2369,7 +2374,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn contains_key3<'a, Q>(&'a self, key3: &Q) -> bool
     where
-        Q: Hash + Equivalent<T::K3<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
     {
         self.find3_index(key3).is_some()
     }
@@ -2422,7 +2427,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn get3<'a, Q>(&'a self, key3: &Q) -> Option<&'a T>
     where
-        Q: Hash + Equivalent<T::K3<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
     {
         self.find3(key3)
     }
@@ -2478,7 +2483,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn get3_mut<'a, Q>(&'a mut self, key3: &Q) -> Option<RefMut<'a, T, S>>
     where
-        Q: Hash + Equivalent<T::K3<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
     {
         let (dormant_map, index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -2544,7 +2549,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn remove3<'a, Q>(&'a mut self, key3: &Q) -> Option<T>
     where
-        Q: Hash + Equivalent<T::K3<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
     {
         let (dormant_map, remove_index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -2747,14 +2752,14 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
 
     fn find1<'a, Q>(&'a self, k: &Q) -> Option<&'a T>
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         self.find1_index(k).map(|ix| &self.items[ix])
     }
 
     fn find1_index<'a, Q>(&'a self, k: &Q) -> Option<ItemIndex>
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         self.tables
             .k1_to_item
@@ -2763,14 +2768,14 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
 
     fn find2<'a, Q>(&'a self, k: &Q) -> Option<&'a T>
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         self.find2_index(k).map(|ix| &self.items[ix])
     }
 
     fn find2_index<'a, Q>(&'a self, k: &Q) -> Option<ItemIndex>
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         self.tables
             .k2_to_item
@@ -2779,14 +2784,14 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
 
     fn find3<'a, Q>(&'a self, k: &Q) -> Option<&'a T>
     where
-        Q: Hash + Equivalent<T::K3<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
     {
         self.find3_index(k).map(|ix| &self.items[ix])
     }
 
     fn find3_index<'a, Q>(&'a self, k: &Q) -> Option<ItemIndex>
     where
-        Q: Hash + Equivalent<T::K3<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
     {
         self.tables
             .k3_to_item
@@ -2995,10 +3000,9 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
 impl<'a, T, S, A: Allocator> fmt::Debug for TriHashMap<T, S, A>
 where
     T: TriHashItem + fmt::Debug,
-    T::K1<'a>: fmt::Debug,
-    T::K2<'a>: fmt::Debug,
-    T::K3<'a>: fmt::Debug,
-    T: 'a,
+    T::K1: ForLt<Of<'a>: fmt::Debug>,
+    T::K2: ForLt<Of<'a>: fmt::Debug>,
+    T::K3: ForLt<Of<'a>: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut map = f.debug_map();
@@ -3029,17 +3033,17 @@ where
     }
 }
 
-struct KeyMap<'a, T: TriHashItem + 'a> {
-    key1: T::K1<'a>,
-    key2: T::K2<'a>,
-    key3: T::K3<'a>,
+struct KeyMap<'a, T: TriHashItem> {
+    key1: Feed<'a, T::K1>,
+    key2: Feed<'a, T::K2>,
+    key3: Feed<'a, T::K3>,
 }
 
 impl<'a, T: TriHashItem> fmt::Debug for KeyMap<'a, T>
 where
-    T::K1<'a>: fmt::Debug,
-    T::K2<'a>: fmt::Debug,
-    T::K3<'a>: fmt::Debug,
+    T::K1: ForLt<Of<'a>: fmt::Debug>,
+    T::K2: ForLt<Of<'a>: fmt::Debug>,
+    T::K3: ForLt<Of<'a>: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // We don't want to show key1 and key2 as a tuple since it's

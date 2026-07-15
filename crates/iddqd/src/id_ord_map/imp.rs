@@ -3,6 +3,7 @@ use super::{
     VacantEntry, tables::IdOrdMapTables,
 };
 use crate::{
+    Feed, ForLt,
     errors::DuplicateItem,
     internal::{ValidateChaos, ValidateCompact, ValidationError},
     support::{
@@ -593,7 +594,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     #[inline]
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T>
     where
-        T::Key<'a>: Hash,
+        for<'b> T::Key: ForLt<Of<'b>: Hash>,
     {
         IterMut::new(&mut self.items, &self.tables)
     }
@@ -799,7 +800,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn contains_key<'a, Q>(&'a self, key: &Q) -> bool
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
+        Q: ?Sized + for<'b> Comparable<Feed<'b, T::Key>>,
     {
         self.find_index(key).is_some()
     }
@@ -835,7 +836,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn get<'a, Q>(&'a self, key: &Q) -> Option<&'a T>
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
+        Q: ?Sized + for<'b> Comparable<Feed<'b, T::Key>>,
     {
         self.find(key)
     }
@@ -874,22 +875,17 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn get_mut<'a, Q>(&'a mut self, key: &Q) -> Option<RefMut<'a, T>>
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
-        T::Key<'a>: Hash,
+        Q: ?Sized + for<'b> Comparable<Feed<'b, T::Key>>,
+        for<'b> Feed<'b, T::Key>: Hash,
     {
-        let (dormant_map, index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let index = map.find_index(key)?;
-            (dormant_map, index)
-        };
+        let index = self.find_index(key)?;
 
         // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-        let item = &mut awakened_map.items[index];
-        let state = awakened_map.tables.state().clone();
+        let item = &mut self.items[index];
+        let state = self.tables.state().clone();
         let (hash, dormant) = {
             let (item, dormant) = DormantMutRef::new(item);
-            let hash = awakened_map.tables.make_hash(item);
+            let hash = self.tables.make_hash(item);
             (hash, dormant)
         };
 
@@ -934,17 +930,10 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn remove<'a, Q>(&'a mut self, key: &Q) -> Option<T>
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
+        Q: ?Sized + for<'b> Comparable<Feed<'b, T::Key>>,
     {
-        let (dormant_map, remove_index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let remove_index = map.find_index(key)?;
-            (dormant_map, remove_index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-        awakened_map.remove_by_index(remove_index)
+        let remove_index = self.find_index(key)?;
+        self.remove_by_index(remove_index)
     }
 
     /// Retrieves an entry by its `key`.
@@ -993,7 +982,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     ///
     /// assert_eq!(map.get("foo").unwrap().value, 99);
     /// ```
-    pub fn entry<'a>(&'a mut self, key: T::Key<'_>) -> Entry<'a, T> {
+    pub fn entry<'a>(&'a mut self, key: Feed<'_, T::Key>) -> Entry<'a, T> {
         // Why does this always take an owned key? Well, it would seem like we
         // should be able to pass in any Q that is equivalent. That results in
         // *this* code compiling fine, but callers have trouble using it because
@@ -1002,7 +991,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
         //
         // By accepting owned keys, we can use the upcast functions to convert
         // them to a shorter lifetime (so this function accepts T::Key<'_>
-        // rather than T::Key<'a>).
+        // rather than Feed<'a, T::Key>).
         //
         // Really, the solution here is to allow GATs to require covariant
         // parameters. If that were allowed, the borrow checker should be able
@@ -1347,7 +1336,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     pub fn retain<'a, F>(&'a mut self, mut f: F)
     where
         F: for<'b> FnMut(RefMut<'b, T>) -> bool,
-        T::Key<'a>: Hash,
+        for<'b> Feed<'b, T::Key>: Hash,
     {
         let hash_state = self.tables.state().clone();
         let (_, mut dormant_items) = DormantMutRef::new(&mut self.items);
@@ -1416,14 +1405,14 @@ impl<T: IdOrdItem> IdOrdMap<T> {
 
     fn find<'a, Q>(&'a self, k: &Q) -> Option<&'a T>
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
+        Q: ?Sized + for<'b> Comparable<Feed<'b, T::Key>>,
     {
         self.find_index(k).map(|ix| &self.items[ix])
     }
 
     fn linear_search_index<'a, Q>(&'a self, k: &Q) -> Option<ItemIndex>
     where
-        Q: ?Sized + Ord + Equivalent<T::Key<'a>>,
+        Q: ?Sized + Ord + Equivalent<Feed<'a, T::Key>>,
     {
         self.items.iter().find_map(|(index, item)| {
             (k.equivalent(&item.key())).then_some(index)
@@ -1432,7 +1421,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
 
     fn find_index<'a, Q>(&'a self, k: &Q) -> Option<ItemIndex>
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
+        Q: ?Sized + Comparable<Feed<'a, T::Key>>,
     {
         self.tables.key_to_item.find_index(k, |index| self.items[index].key())
     }
@@ -1446,7 +1435,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
         index: ItemIndex,
     ) -> Option<RefMut<'a, T>>
     where
-        T::Key<'a>: Hash,
+        for<'b> Feed<'b, T::Key>: Hash,
     {
         let state = self.tables.state().clone();
         let (hash, dormant) = {
@@ -1585,11 +1574,10 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     }
 }
 
-impl<'a, T: IdOrdItem> fmt::Debug for IdOrdMap<T>
+impl<T: IdOrdItem> fmt::Debug for IdOrdMap<T>
 where
     T: fmt::Debug,
-    T::Key<'a>: fmt::Debug,
-    T: 'a,
+    T::Key: for<'a> ForLt<Of<'a>: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut map = f.debug_map();
@@ -1597,18 +1585,18 @@ where
         for item in self.iter() {
             let key = item.key();
 
-            // SAFETY:
-            //
-            // * Lifetime extension: for a type T and two lifetime params 'a and
-            //   'b, T<'a> and T<'b> aren't guaranteed to have the same layout,
-            //   but (a) that is true today and (b) it would be shocking and
-            //   break half the Rust ecosystem if that were to change in the
-            //   future.
-            // * We only use key within the scope of this block before immediately
-            //   dropping it. In particular, map.entry calls key.fmt() without
-            //   holding a reference to it.
-            let key: T::Key<'a> =
-                unsafe { core::mem::transmute::<T::Key<'_>, T::Key<'a>>(key) };
+            // // SAFETY:
+            // //
+            // // * Lifetime extension: for a type T and two lifetime params 'a and
+            // //   'b, T<'a> and T<'b> aren't guaranteed to have the same layout,
+            // //   but (a) that is true today and (b) it would be shocking and
+            // //   break half the Rust ecosystem if that were to change in the
+            // //   future.
+            // // * We only use key within the scope of this block before immediately
+            // //   dropping it. In particular, map.entry calls key.fmt() without
+            // //   holding a reference to it.
+            // let key: Feed<'a, T::Key> =
+            //     unsafe { core::mem::transmute::<T::Key<'_>, Feed<'a, T::Key>>(key) };
 
             map.entry(&key, &item);
         }
@@ -1667,7 +1655,7 @@ impl<'a, T: IdOrdItem> IntoIterator for &'a IdOrdMap<T> {
 
 impl<'a, T: IdOrdItem> IntoIterator for &'a mut IdOrdMap<T>
 where
-    T::Key<'a>: Hash,
+    T::Key: for<'b> ForLt<Of<'b>: Hash>,
 {
     type Item = RefMut<'a, T>;
     type IntoIter = IterMut<'a, T>;

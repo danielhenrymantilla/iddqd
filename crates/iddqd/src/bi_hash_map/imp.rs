@@ -10,13 +10,19 @@ use crate::{
     errors::{DuplicateItem, TryReserveError},
     internal::{ValidateCompact, ValidationError},
     support::{
-        ItemIndex,
-        alloc::{Allocator, Global, global_alloc},
-        borrow::DormantMutRef,
-        fmt_utils::StrDisplayAsDebug,
-        hash_table,
-        item_set::ItemSet,
-        map_hash::MapHash,
+        BiHashItem, DefaultHashBuilder, Feed, ForLt,
+        bi_hash_map::entry::OccupiedEntryMut,
+        errors::DuplicateItem,
+        internal::{ValidateCompact, ValidationError},
+        support::{
+            ItemIndex,
+            alloc::{Allocator, Global, global_alloc},
+            borrow::DormantMutRef,
+            fmt_utils::StrDisplayAsDebug,
+            hash_table,
+            item_set::ItemSet,
+            map_hash::MapHash,
+        },
     },
 };
 use alloc::{collections::BTreeSet, vec::Vec};
@@ -1325,8 +1331,8 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
         key2: &Q2,
     ) -> bool
     where
-        Q1: Hash + Equivalent<T::K1<'a>> + ?Sized,
-        Q2: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q1: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
+        Q2: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         self.get_unique(key1, key2).is_some()
     }
@@ -1376,8 +1382,8 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
         key2: &Q2,
     ) -> Option<&'a T>
     where
-        Q1: Hash + Equivalent<T::K1<'a>> + ?Sized,
-        Q2: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q1: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
+        Q2: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         let index = self.find1_index(key1)?;
         let item = &self.items[index];
@@ -1392,21 +1398,21 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
         key2: &Q2,
     ) -> Option<RefMut<'a, T, S>>
     where
-        Q1: Hash + Equivalent<T::K1<'a>> + ?Sized,
-        Q2: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q1: Hash + for<'b> Equivalent<Feed<'b, T::K1>> + ?Sized,
+        Q2: Hash + for<'b> Equivalent<Feed<'b, T::K2>> + ?Sized,
     {
         let (dormant_map, index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
+            let (map, _dormant_map) = (self, ());
             let index = map.find1_index(key1)?;
             // Check key2 match before proceeding
             if !key2.equivalent(&map.items[index].key2()) {
                 return None;
             }
-            (dormant_map, index)
+            (map, index)
         };
 
         // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
+        let awakened_map = dormant_map;
         let item = &mut awakened_map.items[index];
         let state = awakened_map.tables.state.clone();
         let hashes =
@@ -1421,8 +1427,8 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
         key2: &Q2,
     ) -> Option<T>
     where
-        Q1: Hash + Equivalent<T::K1<'a>> + ?Sized,
-        Q2: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q1: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
+        Q2: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         let (dormant_map, remove_index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -1480,7 +1486,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// ```
     pub fn contains_key1<'a, Q>(&'a self, key1: &Q) -> bool
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         self.find1_index(key1).is_some()
     }
@@ -1526,7 +1532,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// ```
     pub fn get1<'a, Q>(&'a self, key1: &Q) -> Option<&'a T>
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         self.find1(key1)
     }
@@ -1534,7 +1540,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// Gets a mutable reference to the value associated with the given `key1`.
     pub fn get1_mut<'a, Q>(&'a mut self, key1: &Q) -> Option<RefMut<'a, T, S>>
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         let (dormant_map, index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -1594,7 +1600,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// ```
     pub fn remove1<'a, Q>(&'a mut self, key1: &Q) -> Option<T>
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         let (dormant_map, remove_index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -1649,7 +1655,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// ```
     pub fn contains_key2<'a, Q>(&'a self, key2: &Q) -> bool
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         self.find2_index(key2).is_some()
     }
@@ -1695,7 +1701,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// ```
     pub fn get2<'a, Q>(&'a self, key2: &Q) -> Option<&'a T>
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         self.find2(key2)
     }
@@ -1741,7 +1747,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// ```
     pub fn get2_mut<'a, Q>(&'a mut self, key2: &Q) -> Option<RefMut<'a, T, S>>
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         let (dormant_map, index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -1801,7 +1807,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// ```
     pub fn remove2<'a, Q>(&'a mut self, key2: &Q) -> Option<T>
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         let (dormant_map, remove_index) = {
             let (map, dormant_map) = DormantMutRef::new(self);
@@ -1882,8 +1888,8 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// For an expanded example, see the type-level documentation for [`Entry`].
     pub fn entry<'a>(
         &'a mut self,
-        key1: T::K1<'_>,
-        key2: T::K2<'_>,
+        key1: Feed<'_, T::K1>,
+        key2: Feed<'_, T::K2>,
     ) -> Entry<'a, T, S, A> {
         // Why does this always take owned keys? Well, it would seem like we
         // should be able to pass in any Q1 and Q2 that are equivalent. That
@@ -1893,7 +1899,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
         //
         // By accepting owned keys, we can use the upcast functions to convert
         // them to a shorter lifetime (so this function accepts T::K1<'_> rather
-        // than T::K1<'a>).
+        // than Feed<'a, T::K1>).
         //
         // Really, the solution here is to allow GATs to require covariant
         // parameters. If that were allowed, the borrow checker should be able
@@ -2092,14 +2098,14 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
 
     fn find1<'a, Q>(&'a self, k: &Q) -> Option<&'a T>
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         self.find1_index(k).map(|ix| &self.items[ix])
     }
 
     fn find1_index<'a, Q>(&'a self, k: &Q) -> Option<ItemIndex>
     where
-        Q: Hash + Equivalent<T::K1<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
     {
         self.tables
             .k1_to_item
@@ -2108,14 +2114,14 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
 
     fn find2<'a, Q>(&'a self, k: &Q) -> Option<&'a T>
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         self.find2_index(k).map(|ix| &self.items[ix])
     }
 
     fn find2_index<'a, Q>(&'a self, k: &Q) -> Option<ItemIndex>
     where
-        Q: Hash + Equivalent<T::K2<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
     {
         self.tables
             .k2_to_item
@@ -2513,9 +2519,8 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
 impl<'a, T, S, A> fmt::Debug for BiHashMap<T, S, A>
 where
     T: BiHashItem + fmt::Debug,
-    T::K1<'a>: fmt::Debug,
-    T::K2<'a>: fmt::Debug,
-    T: 'a,
+    T::K1: for<'b> ForLt<Of<'b>: fmt::Debug>,
+    T::K2: for<'b> ForLt<Of<'b>: fmt::Debug>,
     A: Allocator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2524,19 +2529,19 @@ where
             let key: KeyMap<'_, T> =
                 KeyMap { key1: item.key1(), key2: item.key2() };
 
-            // SAFETY:
-            //
-            // * Lifetime extension: for a type T and two lifetime params 'a and
-            //   'b, T<'a> and T<'b> aren't guaranteed to have the same layout,
-            //   but (a) that is true today and (b) it would be shocking and
-            //   break half the Rust ecosystem if that were to change in the
-            //   future.
-            // * We only use key within the scope of this block before immediately
-            //   dropping it. In particular, map.entry calls key.fmt() without
-            //   holding a reference to it.
-            let key: KeyMap<'a, T> = unsafe {
-                core::mem::transmute::<KeyMap<'_, T>, KeyMap<'a, T>>(key)
-            };
+            // // SAFETY:
+            // //
+            // // * Lifetime extension: for a type T and two lifetime params 'a and
+            // //   'b, T<'a> and T<'b> aren't guaranteed to have the same layout,
+            // //   but (a) that is true today and (b) it would be shocking and
+            // //   break half the Rust ecosystem if that were to change in the
+            // //   future.
+            // // * We only use key within the scope of this block before immediately
+            // //   dropping it. In particular, map.entry calls key.fmt() without
+            // //   holding a reference to it.
+            // let key: KeyMap<'a, T> = unsafe {
+            //     core::mem::transmute::<KeyMap<'_, T>, KeyMap<'a, T>>(key)
+            // };
 
             map.entry(&key as &dyn fmt::Debug, item);
         }
@@ -2545,14 +2550,14 @@ where
 }
 
 struct KeyMap<'a, T: BiHashItem + 'a> {
-    key1: T::K1<'a>,
-    key2: T::K2<'a>,
+    key1: Feed<'a, T::K1>,
+    key2: Feed<'a, T::K2>,
 }
 
-impl<'a, T: BiHashItem + 'a> fmt::Debug for KeyMap<'a, T>
+impl<'a, T: BiHashItem> fmt::Debug for KeyMap<'a, T>
 where
-    T::K1<'a>: fmt::Debug,
-    T::K2<'a>: fmt::Debug,
+    T::K1: ForLt<Of<'a>: fmt::Debug>,
+    T::K2: ForLt<Of<'a>: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // We don't want to show key1 and key2 as a tuple since it's
