@@ -4,8 +4,8 @@ use crate::hegel_support::{
 };
 use hegel::{TestCase, generators as gs};
 use iddqd::{
-    TriHashItem, TriHashMap, internal::ValidateCompact, tri_hash_map,
-    tri_upcast,
+    Feed, ForLt, TriHashItem, TriHashMap, internal::ValidateCompact,
+    tri_hash_map, tri_upcast,
 };
 use iddqd_test_utils::{
     borrowed_item::BorrowedItem,
@@ -29,19 +29,19 @@ struct SimpleItem {
 }
 
 impl TriHashItem for SimpleItem {
-    type K1<'a> = u32;
-    type K2<'a> = char;
-    type K3<'a> = u8;
+    type K1 = ForLt![<'a> = u32];
+    type K2 = ForLt![<'a> = char];
+    type K3 = ForLt![<'a> = u8];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         self.key1
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         self.key2
     }
 
-    fn key3(&self) -> Self::K3<'_> {
+    fn key3(&self) -> Feed<'_, Self::K3> {
         self.key3
     }
 
@@ -919,16 +919,16 @@ mod macro_tests {
     }
 
     impl TriHashItem for Person {
-        type K1<'a> = u32;
-        type K2<'a> = &'a str;
-        type K3<'a> = &'a str;
-        fn key1(&self) -> Self::K1<'_> {
+        type K1 = ForLt![<'a> = u32];
+        type K2 = ForLt![<'a> = &'a str];
+        type K3 = ForLt![<'a> = &'a str];
+        fn key1(&self) -> Feed<'_, Self::K1> {
             self.id
         }
-        fn key2(&self) -> Self::K2<'_> {
+        fn key2(&self) -> Feed<'_, Self::K2> {
             &self.name
         }
-        fn key3(&self) -> Self::K3<'_> {
+        fn key3(&self) -> Feed<'_, Self::K3> {
             &self.email
         }
         tri_upcast!();
@@ -1063,21 +1063,18 @@ struct PanickyHashItem {
 
 #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))]
 impl TriHashItem for PanickyHashItem {
-    type K1<'a> = iddqd_test_utils::panic_safety::PanickyKey;
-    type K2<'a> = iddqd_test_utils::panic_safety::PanickyKey;
-    type K3<'a> = iddqd_test_utils::panic_safety::PanickyKey;
-
-    fn key1(&self) -> Self::K1<'_> {
+    type K1 = ForLt![<'a> = iddqd_test_utils::panic_safety::PanickyKey];
+    type K2 = ForLt![<'a> = iddqd_test_utils::panic_safety::PanickyKey];
+    type K3 = ForLt![<'a> = iddqd_test_utils::panic_safety::PanickyKey];
+    fn key1(&self) -> Feed<'_, Self::K1> {
         iddqd_test_utils::panic_safety::observe_panicky_call("key1");
         iddqd_test_utils::panic_safety::PanickyKey(self.key1)
     }
-
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         iddqd_test_utils::panic_safety::observe_panicky_call("key2");
         iddqd_test_utils::panic_safety::PanickyKey(self.key2)
     }
-
-    fn key3(&self) -> Self::K3<'_> {
+    fn key3(&self) -> Feed<'_, Self::K3> {
         iddqd_test_utils::panic_safety::observe_panicky_call("key3");
         iddqd_test_utils::panic_safety::PanickyKey(self.key3)
     }

@@ -5,8 +5,9 @@
 //! comparator.
 
 use super::{ItemIndex, item_set::IndexRemap, map_hash::MapHash};
-use crate::internal::{
-    TableValidationError, ValidateCompact, table_validation_fail,
+use crate::{
+    Feed, ForLt,
+    internal::{TableValidationError, ValidateCompact, table_validation_fail},
 };
 use alloc::{
     collections::{BTreeMap, btree_map},
@@ -16,11 +17,111 @@ use core::{
     cell::Cell,
     cmp::Ordering,
     hash::{BuildHasher, Hash},
-    marker::PhantomData,
+    ptr,
 };
 use equivalent::Comparable;
+use std::thread::LocalKey;
 
-thread_local! {
+pub struct ScopedTls<T: 'static + ForLt> {
+    inner: &'static LocalKey<
+        Cell<
+            Option<
+                // Note: what we'd want here is `Unsafe![<'a, 'b> = &'a Feed<'b, T>]`
+                ptr::NonNull<Feed<'static, T>>,
+            >,
+        >,
+    >,
+}
+
+macro_rules! scoped_tls {(
+    $(#[doc $($doc:tt)*])*
+    $pub:vis static $NAME:ident: $T:ty;
+) => (
+    $(#[doc $($doc)*])*
+    $pub static $NAME: ScopedTls<ForLt![<'scoped> = $T]> = ScopedTls {
+        inner: {
+            ::std::thread_local! {
+                static __INNER: ::core::cell::Cell<
+                    ::core::option::Option<
+                        ptr::NonNull<$crate::Feed<'static, ForLt![<'scoped> = $T]>>
+                    >,
+                > = const { ::core::cell::Cell::new(::core::option::Option::None) };
+            }
+            &__INNER
+        },
+    };
+)}
+
+impl<T: 'static + ForLt> ScopedTls<T> {
+    pub fn with_value<'a, 'r, R>(
+        &'static self,
+        value: &'r Feed<'a, T>,
+        scope: impl FnOnce() -> R,
+    ) -> R {
+        let outer = self.inner.replace(Some(
+            // SAFETY: erasing the lifetimes into an inert value.
+            // Morally, the `Thing<'x, 'y> -> unsafe<'a, 'b> Thing<'a, 'b>` inert erasure.
+            // All the subtlety lies in the `unsafe` conversion done in the other direction.
+            unsafe {
+                ::core::mem::transmute::<&'r Feed<'a, T>, &'r Feed<'static, T>>(
+                    value,
+                )
+            }
+            .into(),
+        ));
+        struct ClearOnUnwindGuard<T: 'static + ForLt> {
+            tls: &'static ScopedTls<T>,
+            outer: Option<ptr::NonNull<Feed<'static, T>>>,
+        }
+        impl<T: ForLt> Drop for ClearOnUnwindGuard<T> {
+            fn drop(&mut self) {
+                self.tls.inner.set(self.outer);
+            }
+        }
+        let guard = ClearOnUnwindGuard { tls: self, outer };
+        let ret = scope();
+        ::core::mem::forget(guard);
+        self.inner.set(outer);
+        ret
+    }
+
+    pub fn get_with<R>(
+        &'static self,
+        yield_: impl for<'a, 'r> FnOnce(Option<&'r Feed<'a, T>>) -> R,
+    ) -> R {
+        self.inner.with(|r: &Cell<Option<ptr::NonNull<Feed<'static, T>>>>| {
+            match r.get() {
+                None => yield_(None),
+                Some(ptr) => {
+                    // SAFETY: if it is `Some`, it means **we're inside** some [`Self::with_value`]
+                    // scope.
+                    //
+                    // And that scope is known to be smaller than either of `'r`, `'a`, since those
+                    // are non-`for<>` generic lifetime params enscoping that `fn`.
+                    //
+                    // Thus, if we call the scope of our current `fn get_with()` call as `'fn`, we
+                    // have:
+                    // `exists<'a : 'fn, 'r : 'fn> typeof(ptr) = &'r Feed<'a, T>`.
+                    //
+                    // Our caller `FnOnce` is one able to handle `for<'a, 'r> &'r Feed<'a, T>` (when
+                    // `Some`).
+                    //
+                    // Thus, it is fine to perform the
+                    // `unsafe<'a, 'r> &'r Feed<'a, T> -> &'?1 Feed<'?2, T>` unerasure, i.e., to
+                    // reïfy a concrete instance of this `unsafe<>` type via some conjured concrete
+                    // lifetimes (even if they happen to be underconstrained here; so they could be
+                    // *anything*, including *the worst*: the only "witness" of such a thing is our
+                    // generativity-general `yield_` closure from the caller, designed to be able to
+                    // handle *anything*, including "the worst" for them, i.e., *the best* for us).
+                    let r: &Feed<'_, T> = unsafe { ptr.cast().as_ref() };
+                    yield_(Some(r))
+                }
+            }
+        })
+    }
+}
+
+scoped_tls! {
     /// Stores an external comparator function to provide dynamic scoping.
     ///
     /// std's BTreeMap doesn't allow passing an external comparator, so we make
@@ -67,12 +168,11 @@ thread_local! {
     ///   default choice to balance cache locality, but other options are worth
     ///   benchmarking. We do need to provide a comparator, though, so radix
     ///   trees and such are out of the question.
-    static CMP: Cell<Option<&'static IndexCmp<'static>>>
-        = const { Cell::new(None) };
+    static CMP: &'scoped IndexCmp<'scoped>;
 }
 
 /// External comparator type used via `CMP`'s dynamic scoping.
-type IndexCmp<'a> = dyn Fn(&Index, &Index) -> Ordering + 'a;
+type IndexCmp<'u> = dyn 'u + Fn(&Index, &Index) -> Ordering;
 
 /// A B-tree-based table with an external comparator.
 #[derive(Clone, Debug, Default)]
@@ -188,24 +288,20 @@ impl MapBTreeTable {
         Q: ?Sized + Comparable<K>,
         F: Fn(ItemIndex) -> K,
     {
-        let f = find_cmp(key, lookup);
+        let f = &find_cmp(key, lookup) as &IndexCmp<'_>;
 
-        let guard = CmpDropGuard::new(&f);
-
-        let ret = match self.items.get_key_value(&Index::sentinel()) {
-            Some((ix, ())) if ix.value() == Index::SENTINEL_VALUE => {
-                panic!("internal map shouldn't store sentinel value")
+        CMP.with_value(&f, || {
+            match self.items.get_key_value(&Index::sentinel()) {
+                Some((ix, ())) if ix.value() == Index::SENTINEL_VALUE => {
+                    panic!("internal map shouldn't store sentinel value")
+                }
+                Some((ix, ())) => Some(ix.value()),
+                None => {
+                    // The key is not in the table.
+                    None
+                }
             }
-            Some((ix, ())) => Some(ix.value()),
-            None => {
-                // The key is not in the table.
-                None
-            }
-        };
-
-        // drop(guard) isn't necessary, but we make it explicit
-        drop(guard);
-        ret
+        })
     }
 
     pub(crate) fn prepare_insert<K, Q, F>(
@@ -219,18 +315,14 @@ impl MapBTreeTable {
         Q: ?Sized + Comparable<K>,
         F: Fn(ItemIndex) -> K,
     {
-        let f = insert_cmp(index, key, lookup);
-        let guard = CmpDropGuard::new(&f);
-
-        let entry = match self.items.entry(Index::new(index)) {
-            btree_map::Entry::Vacant(entry) => entry,
-            btree_map::Entry::Occupied(_) => {
-                panic!("internal map already contains index {index}")
-            }
-        };
-
-        // drop(guard) isn't necessary, but we make it explicit
-        drop(guard);
+        let f = &insert_cmp(index, key, lookup) as &IndexCmp<'_>;
+        let entry =
+            CMP.with_value(&f, || match self.items.entry(Index::new(index)) {
+                btree_map::Entry::Vacant(entry) => entry,
+                btree_map::Entry::Occupied(_) => {
+                    panic!("internal map already contains index {index}")
+                }
+            });
 
         PreparedBTreeInsert { entry }
     }
@@ -244,13 +336,10 @@ impl MapBTreeTable {
     where
         F: Fn(ItemIndex) -> K,
         K: Ord,
+        K: Comparable<K>,
     {
-        let f = insert_cmp(index, key, lookup);
-        let guard = CmpDropGuard::new(&f);
-        let entry = self.items.entry(Index::new(index));
-
-        // drop(guard) isn't necessary, but we make it explicit
-        drop(guard);
+        let f = &insert_cmp(index, key, lookup) as &IndexCmp<'_>;
+        let entry = CMP.with_value(&f, || self.items.entry(Index::new(index)));
 
         match entry {
             btree_map::Entry::Vacant(_) => {
@@ -484,35 +573,6 @@ where
     }
 }
 
-struct CmpDropGuard<'a> {
-    _marker: PhantomData<&'a ()>,
-}
-
-impl<'a> CmpDropGuard<'a> {
-    fn new(f: &'a IndexCmp<'a>) -> Self {
-        // CMP lasts only as long as this function and is immediately reset to
-        // None once this scope is left.
-        let ret = Self { _marker: PhantomData };
-
-        // SAFETY: This is safe because we are not storing the reference
-        // anywhere, and it is only used for the lifetime of this CmpDropGuard.
-        let as_static = unsafe {
-            std::mem::transmute::<&'a IndexCmp<'a>, &'static IndexCmp<'static>>(
-                f,
-            )
-        };
-        CMP.set(Some(as_static));
-
-        ret
-    }
-}
-
-impl Drop for CmpDropGuard<'_> {
-    fn drop(&mut self) {
-        CMP.set(None);
-    }
-}
-
 /// An [`ItemIndex`] (= `u32`) with interior mutability, layout-identical
 /// to `u32`.
 ///
@@ -614,10 +674,7 @@ impl PartialEq for Index {
 
         // If any of the two indexes is the sentinel, we're required to perform
         // a lookup.
-        CMP.with(|cmp| {
-            let cmp = cmp.get().expect("cmp should be set");
-            cmp(self, other) == Ordering::Equal
-        })
+        Self::cmp(self, other) == Ordering::Equal
     }
 }
 
@@ -628,8 +685,8 @@ impl Ord for Index {
     fn cmp(&self, other: &Self) -> Ordering {
         // Ord should only be called if we're doing lookups within the table,
         // which should have set the thread local.
-        CMP.with(|cmp| {
-            let cmp = cmp.get().expect("cmp should be set");
+        CMP.get_with(|cmp| {
+            let cmp = cmp.expect("cmp should be set");
             cmp(self, other)
         })
     }

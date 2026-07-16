@@ -413,6 +413,28 @@ macro_rules! ForLt {
     );
 }
 
+/// TODO
+pub trait ForLtEquivalent:
+    for<'a, 'b> ForLt<Of<'a>: Eq + Hash + Equivalent<Self::Of<'b>>>
+{
+}
+
+impl<T: ForLt> ForLtEquivalent for T where
+    for<'a, 'b> T::Of<'a>: Eq + Hash + Equivalent<T::Of<'b>>
+{
+}
+
+/// TODO
+pub trait ForLtComparable:
+    for<'a, 'b> ForLt<Of<'a>: Ord + Comparable<Self::Of<'b>>>
+{
+}
+
+impl<T: ForLt> ForLtComparable for T where
+    for<'a, 'b> T::Of<'a>: Ord + Comparable<T::Of<'b>>
+{
+}
+
 #[cfg_attr(not(feature = "std"), macro_use)] // for `format!`
 extern crate alloc;
 #[cfg(feature = "std")]
@@ -432,17 +454,13 @@ pub mod id_ord_map;
 pub mod internal;
 #[cfg(soteria)]
 mod proofs;
+
+pub use self::support::equivalent::{Comparable, Equivalent, simple_impl};
+use core::hash::Hash;
 mod support;
 pub mod tri_hash_map;
 
 pub use bi_hash_map::{imp::BiHashMap, trait_defs::BiHashItem};
-// Re-exports of equivalent traits. Comparable is only used by IdOrdMap, hence
-// is restricted to std.
-#[cfg(feature = "std")]
-#[doc(no_inline)]
-pub use equivalent::Comparable;
-#[doc(no_inline)]
-pub use equivalent::Equivalent;
 pub use id_hash_map::{imp::IdHashMap, trait_defs::IdHashItem};
 #[cfg(feature = "std")]
 pub use id_ord_map::{imp::IdOrdMap, trait_defs::IdOrdItem};
@@ -450,3 +468,6 @@ pub use id_ord_map::{imp::IdOrdMap, trait_defs::IdOrdItem};
 pub use support::daft_utils::IdLeaf;
 pub use support::hash_builder::DefaultHashBuilder;
 pub use tri_hash_map::{imp::TriHashMap, trait_defs::TriHashItem};
+
+extern crate self as equivalent;
+extern crate self as iddqd;

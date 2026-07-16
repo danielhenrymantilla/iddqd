@@ -334,15 +334,15 @@ macro_rules! bi_upcast {
     () => {
         #[inline]
         fn upcast_key1<'short, 'long: 'short>(
-            long: Feed<'long, Self::K1>,
-        ) -> Feed<'short, Self::K1> {
+            long: $crate::Feed<'long, Self::K1>,
+        ) -> $crate::Feed<'short, Self::K1> {
             long
         }
 
         #[inline]
         fn upcast_key2<'short, 'long: 'short>(
-            long: Feed<'long, Self::K2>,
-        ) -> Feed<'short, Self::K2> {
+            long: $crate::Feed<'long, Self::K2>,
+        ) -> $crate::Feed<'short, Self::K2> {
             long
         }
     };
@@ -362,22 +362,22 @@ macro_rules! tri_upcast {
     () => {
         #[inline]
         fn upcast_key1<'short, 'long: 'short>(
-            long: Feed<'long, Self::K1>,
-        ) -> Feed<'short, Self::K1> {
+            long: $crate::Feed<'long, Self::K1>,
+        ) -> $crate::Feed<'short, Self::K1> {
             long
         }
 
         #[inline]
         fn upcast_key2<'short, 'long: 'short>(
-            long: Feed<'long, Self::K2>,
-        ) -> Feed<'short, Self::K2> {
+            long: $crate::Feed<'long, Self::K2>,
+        ) -> $crate::Feed<'short, Self::K2> {
             long
         }
 
         #[inline]
         fn upcast_key3<'short, 'long: 'short>(
-            long: Feed<'long, Self::K3>,
-        ) -> Feed<'short, Self::K3> {
+            long: $crate::Feed<'long, Self::K3>,
+        ) -> $crate::Feed<'short, Self::K3> {
             long
         }
     };

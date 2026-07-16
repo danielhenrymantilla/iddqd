@@ -61,32 +61,16 @@ impl<T: IdOrdItem> FusedIterator for Iter<'_, T> {}
 #[derive(Debug)]
 pub struct IterMut<'a, T: IdOrdItem>
 where
-// T::Key: ForLt<Of<'a>: Hash>,
+    T::Key: ForLt<Of<'a>: Hash>,
 {
     items: ItemSlotsPtr<'a, T>,
     tables: &'a IdOrdMapTables,
     iter: btree_table::Iter<'a>,
 }
 
-fn _demo<'x>() {
-    struct Foo<'x>(*mut Self);
-    let _: IterMut<'static, Foo<'x>>;
-
-    impl IdOrdItem for Foo<'_> {
-        type Key = ForLt![<'__> = ()];
-
-        fn key(&self) {}
-
-        fn upcast_key<'short, 'long: 'short>(
-            (): crate::Feed<'long, Self::Key>,
-        ) -> crate::Feed<'short, Self::Key> {
-        }
-    }
-}
-
 impl<'a, T: IdOrdItem> IterMut<'a, T>
 where
-    T::Key: for<'k> ForLt<Of<'k>: Hash>,
+    T::Key: for<'local> ForLt<Of<'local>: Hash>,
 {
     pub(super) fn new(
         items: &'a mut ItemSet<T, Global>,
@@ -102,7 +86,7 @@ where
 
 impl<'a, T: IdOrdItem + 'a> Iterator for IterMut<'a, T>
 where
-    for<'b> T::Key: ForLt<Of<'b>: Hash>,
+    for<'local> T::Key: ForLt<Of<'local>: Hash>,
 {
     type Item = RefMut<'a, T>;
 
@@ -123,7 +107,7 @@ where
 
 impl<'a, T: IdOrdItem + 'a> ExactSizeIterator for IterMut<'a, T>
 where
-    for<'b> T::Key: ForLt<Of<'b>: Hash>,
+    for<'local> T::Key: ForLt<Of<'local>: Hash>,
 {
     #[inline]
     fn len(&self) -> usize {
@@ -132,7 +116,7 @@ where
 }
 
 impl<'a, T: IdOrdItem + 'a> FusedIterator for IterMut<'a, T> where
-    for<'b> T::Key: ForLt<Of<'b>: Hash>
+    for<'local> T::Key: ForLt<Of<'local>: Hash>
 {
 }
 

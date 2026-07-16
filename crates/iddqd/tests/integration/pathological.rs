@@ -7,14 +7,15 @@
 
 use core::cell::Cell;
 use iddqd::{
-    BiHashItem, BiHashMap, Comparable, Equivalent, IdHashItem, IdHashMap,
-    IdOrdItem, IdOrdMap, TriHashItem, TriHashMap, bi_hash_map, bi_upcast,
-    id_hash_map, id_ord_map, id_upcast,
+    BiHashItem, BiHashMap, Comparable, Equivalent, Feed, ForLt, IdHashItem,
+    IdHashMap, IdOrdItem, IdOrdMap, TriHashItem, TriHashMap, bi_hash_map,
+    bi_upcast, id_hash_map, id_ord_map, id_upcast,
     internal::{ValidateChaos, ValidateCompact},
     tri_upcast,
 };
 use iddqd_test_utils::{
     panic_safety::{PanickyKey, arm_panic_after, disarm_panic},
+    test_item::ItemMap,
     unwind::catch_panic,
 };
 use std::{
@@ -29,8 +30,8 @@ struct PlainItem {
 }
 
 impl IdHashItem for PlainItem {
-    type Key<'a> = u32;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = u32];
+    fn key(&self) -> u32 {
         self.id
     }
     id_upcast!();
@@ -43,16 +44,16 @@ struct PanickyItem {
 }
 
 impl IdHashItem for PanickyItem {
-    type Key<'a> = PanickyKey;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = PanickyKey];
+    fn key(&self) -> PanickyKey {
         PanickyKey(self.id)
     }
     id_upcast!();
 }
 
 impl IdOrdItem for PanickyItem {
-    type Key<'a> = PanickyKey;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = PanickyKey];
+    fn key(&self) -> PanickyKey {
         PanickyKey(self.id)
     }
     id_upcast!();
@@ -71,7 +72,7 @@ struct DropPanicOrdItem {
     id: u32,
 }
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Equivalent, Comparable)]
 struct DropPanicOrdKey {
     id: u32,
 }
@@ -124,9 +125,9 @@ impl Comparable<DropPanicOrdKey> for DropPanicLookup {
 }
 
 impl IdOrdItem for DropPanicOrdItem {
-    type Key<'a> = DropPanicOrdKey;
+    type Key = ForLt![<'a> = DropPanicOrdKey];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         DropPanicOrdKey { id: self.id }
     }
 
@@ -214,21 +215,21 @@ struct InnerItem {
 }
 
 impl IdOrdItem for InnerItem {
-    type Key<'a> = u32;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = u32];
+    fn key(&self) -> u32 {
         self.id
     }
     id_upcast!();
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct OuterItem {
     id: u32,
 }
 
 impl IdOrdItem for OuterItem {
-    type Key<'a> = u32;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = u32];
+    fn key(&self) -> Feed<'_, Self::Key> {
         if REENTER.with(Cell::get) {
             INNER_MAP.with(|m| {
                 let _ = m.borrow().get(&self.id);
@@ -258,7 +259,7 @@ fn cross_map_reentry_does_not_cause_ub() {
         for i in 0..16 {
             let _ = outer.get(&i);
         }
-        for item in outer.iter_mut() {
+        for item in ItemMap::iter_mut(&mut outer) {
             let _ = item.id;
         }
         for i in 100..104 {
@@ -312,7 +313,7 @@ fn id_ord_panic_during_iter_mut_no_ub() {
         map.insert_unique(PanickyItem { id: i }).unwrap();
     }
     arm_panic_after(3);
-    let count = drain_with_one_panic(map.iter_mut());
+    let count = drain_with_one_panic(ItemMap::iter_mut(&mut map));
     disarm_panic();
     assert!(count >= 15, "drained only {count}");
 }
@@ -324,14 +325,14 @@ thread_local! {
     static SHIFTY_KEY: Cell<u32> = const { Cell::new(0) };
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ShiftyItem {
     seed: u32,
 }
 
 impl IdOrdItem for ShiftyItem {
-    type Key<'a> = u32;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = u32];
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.seed ^ SHIFTY_KEY.with(Cell::get)
     }
     id_upcast!();
@@ -346,7 +347,7 @@ fn shifty_key_no_ub() {
     for shift in 1..8 {
         SHIFTY_KEY.with(|s| s.set(shift));
         let _ = catch_panic(|| {
-            for item in map.iter_mut() {
+            for item in ItemMap::iter_mut(&mut map) {
                 let _ = item.seed;
             }
             for k in 0..32 {
@@ -372,7 +373,7 @@ fn panic_during_ord_op_then_iter_mut_no_dup() {
     disarm_panic();
 
     let mut seen = std::collections::HashSet::new();
-    for item in map.iter_mut() {
+    for item in ItemMap::iter_mut(&mut map) {
         assert!(seen.insert(item.id), "iter_mut yielded id={} twice", item.id);
     }
 }
@@ -385,7 +386,7 @@ struct LyingEqItem {
 }
 
 #[expect(clippy::derived_hash_with_manual_eq)]
-#[derive(Hash)]
+#[derive(Hash, Equivalent)]
 struct LyingEqKey {
     id: u32,
 }
@@ -398,8 +399,8 @@ impl PartialEq for LyingEqKey {
 impl Eq for LyingEqKey {}
 
 impl IdHashItem for LyingEqItem {
-    type Key<'a> = LyingEqKey;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = LyingEqKey];
+    fn key(&self) -> Feed<'_, Self::Key> {
         LyingEqKey { id: self.id }
     }
     id_upcast!();
@@ -424,6 +425,7 @@ thread_local! {
     static MISDIRECTED_EQ_MODE: Cell<bool> = const { Cell::new(false) };
 }
 
+#[derive(Equivalent)]
 struct MisdirectedEqKey {
     id: u32,
 }
@@ -483,8 +485,8 @@ struct MisdirectedEqIdHashItem {
 }
 
 impl IdHashItem for MisdirectedEqIdHashItem {
-    type Key<'a> = MisdirectedEqKey;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = MisdirectedEqKey];
+    fn key(&self) -> Feed<'_, Self::Key> {
         MisdirectedEqKey { id: self.id }
     }
     id_upcast!();
@@ -525,12 +527,12 @@ struct MisdirectedEqBiHashItem {
 }
 
 impl BiHashItem for MisdirectedEqBiHashItem {
-    type K1<'a> = MisdirectedEqKey;
-    type K2<'a> = u32;
-    fn key1(&self) -> Self::K1<'_> {
+    type K1 = ForLt![<'a> = MisdirectedEqKey];
+    type K2 = ForLt![<'a> = u32];
+    fn key1(&self) -> Feed<'_, Self::K1> {
         MisdirectedEqKey { id: self.id }
     }
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         self.id + 10
     }
     bi_upcast!();
@@ -571,16 +573,16 @@ struct MisdirectedEqTriHashItem {
 }
 
 impl TriHashItem for MisdirectedEqTriHashItem {
-    type K1<'a> = MisdirectedEqKey;
-    type K2<'a> = u32;
-    type K3<'a> = u32;
-    fn key1(&self) -> Self::K1<'_> {
+    type K1 = ForLt![<'a> = MisdirectedEqKey];
+    type K2 = ForLt![<'a> = u32];
+    type K3 = ForLt![<'a> = u32];
+    fn key1(&self) -> Feed<'_, Self::K1> {
         MisdirectedEqKey { id: self.id }
     }
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         self.id + 10
     }
-    fn key3(&self) -> Self::K3<'_> {
+    fn key3(&self) -> Feed<'_, Self::K3> {
         self.id + 20
     }
     tri_upcast!();
@@ -615,9 +617,10 @@ fn tri_hash_misdirected_eq_remove_reinsert_retain_no_aliasing() {
     assert!(map.is_empty());
 }
 
-#[derive(Debug)]
+#[derive(Debug, Equivalent)]
 struct AlwaysEqItem;
 
+#[derive(Equivalent)]
 struct AlwaysEqKey;
 
 // Constant hash + always-equal: every probe hits the first occupied slot.
@@ -634,8 +637,8 @@ impl PartialEq for AlwaysEqKey {
 impl Eq for AlwaysEqKey {}
 
 impl IdHashItem for AlwaysEqItem {
-    type Key<'a> = AlwaysEqKey;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = AlwaysEqKey];
+    fn key(&self) -> Feed<'_, Self::Key> {
         AlwaysEqKey
     }
     id_upcast!();
@@ -661,13 +664,13 @@ thread_local! {
     static LIE_ORD: Cell<Option<Ordering>> = const { Cell::new(None) };
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Comparable, Equivalent)]
 struct LyingOrdItem {
     id: u32,
     value: u32,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Comparable, Equivalent)]
 struct LyingOrdKey {
     id: u32,
 }
@@ -691,20 +694,20 @@ impl Ord for LyingOrdKey {
 }
 
 impl IdOrdItem for LyingOrdItem {
-    type Key<'a> = LyingOrdKey;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = LyingOrdKey];
+    fn key(&self) -> Feed<'_, Self::Key> {
         LyingOrdKey { id: self.id }
     }
     id_upcast!();
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct HashBlindOrdItem {
     id: u32,
     value: u32,
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Comparable, Equivalent)]
 struct HashBlindOrdKey {
     id: u32,
 }
@@ -719,8 +722,8 @@ impl Hash for HashBlindOrdKey {
 }
 
 impl IdOrdItem for HashBlindOrdItem {
-    type Key<'a> = HashBlindOrdKey;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = HashBlindOrdKey];
+    fn key(&self) -> Feed<'_, Self::Key> {
         HashBlindOrdKey { id: self.id }
     }
     id_upcast!();
@@ -750,7 +753,7 @@ fn id_ord_hash_blind_key_change_remove_reinsert_iter_mut_no_aliasing() {
     // behind, iter_mut would yield two RefMuts to this same slot.
     map.insert_unique(HashBlindOrdItem { id: 20_000, value: 0 }).unwrap();
 
-    let mut items: Vec<_> = map.iter_mut().collect();
+    let mut items: Vec<_> = Iterator::collect(ItemMap::iter_mut(&mut map));
     for item in &mut items {
         item.value += 1;
     }
@@ -763,12 +766,12 @@ struct ForgettableHashItem {
     id: u32,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Equivalent)]
 struct ForgettableHashKey(u32);
 
 impl IdHashItem for ForgettableHashItem {
-    type Key<'a> = ForgettableHashKey;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = ForgettableHashKey];
+    fn key(&self) -> Feed<'_, Self::Key> {
         ForgettableHashKey(self.id)
     }
     id_upcast!();
@@ -781,12 +784,12 @@ struct ForgettableBiHashItem {
 }
 
 impl BiHashItem for ForgettableBiHashItem {
-    type K1<'a> = ForgettableHashKey;
-    type K2<'a> = ForgettableHashKey;
-    fn key1(&self) -> Self::K1<'_> {
+    type K1 = ForLt![<'a> = ForgettableHashKey];
+    type K2 = ForLt![<'a> = ForgettableHashKey];
+    fn key1(&self) -> Feed<'_, Self::K1> {
         ForgettableHashKey(self.id)
     }
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         ForgettableHashKey(self.alt)
     }
     bi_upcast!();
@@ -800,16 +803,16 @@ struct ForgettableTriHashItem {
 }
 
 impl TriHashItem for ForgettableTriHashItem {
-    type K1<'a> = ForgettableHashKey;
-    type K2<'a> = ForgettableHashKey;
-    type K3<'a> = ForgettableHashKey;
-    fn key1(&self) -> Self::K1<'_> {
+    type K1 = ForLt![<'a> = ForgettableHashKey];
+    type K2 = ForLt![<'a> = ForgettableHashKey];
+    type K3 = ForLt![<'a> = ForgettableHashKey];
+    fn key1(&self) -> Feed<'_, Self::K1> {
         ForgettableHashKey(self.id)
     }
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         ForgettableHashKey(self.alt)
     }
-    fn key3(&self) -> Self::K3<'_> {
+    fn key3(&self) -> Feed<'_, Self::K3> {
         ForgettableHashKey(self.third)
     }
     tri_upcast!();
@@ -1112,7 +1115,7 @@ fn lying_ord_remove_must_not_remove_wrong_btree_entry() {
 
     // Walk through all the items via `iter_mut` so any &mut aliasing is
     // detected by Miri.
-    let mut items: Vec<_> = map.iter_mut().collect();
+    let mut items: Vec<_> = ItemMap::iter_mut(&mut map).collect();
     for item in &mut items {
         item.value += 1;
     }
@@ -1132,7 +1135,7 @@ fn lying_ord_iter_mut_no_duplicate_yield() {
     });
 
     let mut seen = std::collections::HashSet::new();
-    for item in map.iter_mut() {
+    for item in ItemMap::iter_mut(&mut map) {
         let _ = item.value;
         assert!(seen.insert(item.id), "iter_mut yielded id={} twice", item.id);
     }
@@ -1171,7 +1174,7 @@ fn lying_ord_remove_reinsert_iter_mut_no_aliasing() {
     map.insert_unique(LyingOrdItem { id: 10_000, value: 0 }).unwrap();
     LIE_ORD.with(|c| c.set(None));
 
-    let mut items: Vec<_> = map.iter_mut().collect();
+    let mut items: Vec<_> = ItemMap::iter_mut(&mut map).collect();
     for item in &mut items {
         item.value += 1;
     }
@@ -1199,8 +1202,8 @@ impl Drop for DropPanicItem {
 }
 
 impl IdHashItem for DropPanicItem {
-    type Key<'a> = u32;
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = u32];
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.id
     }
     id_upcast!();

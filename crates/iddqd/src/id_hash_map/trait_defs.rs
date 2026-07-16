@@ -1,7 +1,5 @@
+use crate::{Feed, ForLtEquivalent};
 use alloc::{boxed::Box, rc::Rc, sync::Arc};
-use core::hash::Hash;
-
-use crate::{Feed, ForLt};
 
 /// An element stored in an [`IdHashMap`].
 ///
@@ -42,7 +40,7 @@ use crate::{Feed, ForLt};
 /// [`IdHashMap`]: crate::IdHashMap
 pub trait IdHashItem {
     /// The key type.
-    type Key: for<'a> ForLt<Of<'a>: Eq + Hash>;
+    type Key: ForLtEquivalent;
 
     /// Retrieves the key.
     fn key(&self) -> Feed<'_, Self::Key>;

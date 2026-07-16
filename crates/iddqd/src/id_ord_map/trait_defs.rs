@@ -1,8 +1,7 @@
 //! Trait definitions for `IdOrdMap`.
 
+use crate::{Feed, ForLtComparable};
 use alloc::{boxed::Box, rc::Rc, sync::Arc};
-
-use crate::{Feed, ForLt};
 
 /// An element stored in an [`IdOrdMap`].
 ///
@@ -41,7 +40,7 @@ use crate::{Feed, ForLt};
 /// [`IdOrdMap`]: crate::IdOrdMap
 pub trait IdOrdItem {
     /// The key type.
-    type Key: for<'any> ForLt<Of<'any>: Ord>;
+    type Key: ForLtComparable;
 
     /// Retrieves the key.
     fn key(&self) -> Feed<'_, Self::Key>;

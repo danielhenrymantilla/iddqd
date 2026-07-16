@@ -1,4 +1,5 @@
 use super::{IdOrdItem, IdOrdMap};
+use crate::Feed;
 use core::{fmt, marker::PhantomData};
 use serde_core::{
     Deserialize, Deserializer, Serialize, Serializer,
@@ -218,12 +219,12 @@ where
 impl<T> IdOrdMapAsMap<T> {
     /// Serializes an `IdOrdMap` as a JSON object/map using `key()` as keys.
     pub fn serialize<'a, Ser>(
-        map: &IdOrdMap<T>,
+        map: &'a IdOrdMap<T>,
         serializer: Ser,
     ) -> Result<Ser::Ok, Ser::Error>
     where
-        T: 'a + IdOrdItem + Serialize,
-        T::Key<'a>: Serialize,
+        T: IdOrdItem + Serialize,
+        Feed<'a, T::Key>: Serialize,
         Ser: Serializer,
     {
         let mut ser_map = serializer.serialize_map(Some(map.len()))?;
@@ -238,9 +239,7 @@ impl<T> IdOrdMapAsMap<T> {
             // * We only use key within the scope of this block before
             //   immediately dropping it. In particular, ser_map.serialize_entry
             //   serializes the key without holding a reference to it.
-            let key1 = unsafe {
-                core::mem::transmute::<T::Key<'_>, T::Key<'a>>(item.key())
-            };
+            let key1 = item.key();
             ser_map.serialize_entry(&key1, item)?;
         }
         ser_map.end()

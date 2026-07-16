@@ -1,6 +1,6 @@
 use iddqd::{
-    BiHashItem, BiHashMap, Feed, ForLt, IdHashItem, IdHashMap, TriHashItem,
-    TriHashMap, bi_hash_map, bi_upcast,
+    BiHashItem, BiHashMap, Comparable, Equivalent, Feed, ForLt, IdHashItem,
+    IdHashMap, TriHashItem, TriHashMap, bi_hash_map, bi_upcast,
     errors::DuplicateItem,
     id_hash_map, id_upcast,
     internal::{ValidateCompact, ValidationError},
@@ -113,6 +113,8 @@ pub struct KeyChaos {
     pub ord: Option<ChaosOrd>,
 }
 
+iddqd::simple_impl!(KeyChaos);
+
 impl KeyChaos {
     pub fn with_eq(self, chaos: ChaosEq) -> Self {
         Self { eq: Some(chaos), ..self }
@@ -131,6 +133,8 @@ pub enum ChaosEq {
     FlipFlop(Cell<bool>),
 }
 
+iddqd::simple_impl!(ChaosEq);
+
 impl ChaosEq {
     pub fn all_variants() -> [Self; 3] {
         [Self::Always, Self::Never, Self::FlipFlop(Cell::new(false))]
@@ -145,6 +149,8 @@ pub enum ChaosOrd {
     AlwaysEq,
     FlipFlop(Cell<bool>),
 }
+
+iddqd::simple_impl!(ChaosOrd);
 
 impl ChaosOrd {
     pub fn all_variants() -> [Self; 4] {
@@ -219,7 +225,7 @@ macro_rules! impl_test_key_traits {
     };
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Equivalent, Comparable)]
 pub struct TestKey1<'a> {
     // We use u8 since there can only be 256 values, increasing the
     // likelihood of collisions in proptests.
@@ -252,7 +258,7 @@ impl<'a> serde::Serialize for TestKey1<'a> {
 
 impl_test_key_traits!(TestKey1<'_>);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Equivalent)]
 pub struct TestKey2 {
     // char is chosen because the Arbitrary impl for it is biased towards
     // ASCII, increasing the likelihood of collisions.
@@ -272,7 +278,7 @@ impl TestKey2 {
 
 impl_test_key_traits!(TestKey2);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Equivalent)]
 pub struct TestKey3<'a> {
     // &str is a generally open-ended type that probably won't have many
     // collisions.
@@ -355,19 +361,23 @@ pub enum MapKind {
     Hash,
 }
 
-pub(crate) use seal::Is;
-mod seal {
-    pub trait Is<Self_> {}
-    impl<T> Is<Self> for T {}
-}
+// pub(crate) use seal::Is;
+// mod seal {
+//     pub trait Is<Self_> {}
+//     impl<T> Is<Self> for T {}
+// }
 
 /// Represents a map of `TestEntry` values. Used for generic tests and assertions.
 pub trait ItemMap<T>: Clone {
     type K1: ForLt;
     type RefMut: for<'a> ForLt<Of<'a>: IntoRef<'a, T>>;
-    type Iter: for<'a> ForLt<Of<'a> : Iterator<Item: Is<&'a T>>>;
-    type IterMut: for<'a> ForLt// Of<'a>: Iterator // <Item: Is<Feed<'a, Self::RefMut>>>>
-    ;
+    type Iter<'a>: Iterator<Item = &'a T>
+    where
+        Self: 'a,
+        T: 'a;
+    type IterMut<'a>: Iterator<Item = Feed<'a, Self::RefMut>>
+    where
+        Self: 'a;
     type IntoIter: Iterator<Item = T>;
 
     fn map_kind() -> MapKind;
@@ -375,10 +385,10 @@ pub trait ItemMap<T>: Clone {
     fn make_with_capacity(capacity: usize) -> Self;
 
     #[cfg(feature = "serde")]
-    fn serialize_as_map<'a>(&self) -> Result<String, serde_json::Error>
+    fn serialize_as_map<'a>(&'a self) -> Result<String, serde_json::Error>
     where
-        T: 'a + serde::Serialize,
-        Self::K1<'a>: serde::Serialize;
+        T: serde::Serialize,
+        Feed<'a, Self::K1>: serde::Serialize;
     #[cfg(feature = "serde")]
     fn deserialize_as_map<'a, D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -397,17 +407,22 @@ pub trait ItemMap<T>: Clone {
     where
         T: fmt::Debug;
     fn insert_unique(&mut self, value: T) -> Result<(), DuplicateItem<T, &T>>;
-    fn iter(&self) -> Feed<'_, Self::Iter>;
-    fn iter_mut(&mut self) -> Feed<'_, Self::IterMut>;
+    fn iter(&self) -> Self::Iter<'_>;
+    fn iter_mut(&mut self) -> Self::IterMut<'_>;
     fn into_iter(self) -> Self::IntoIter;
 }
 
 impl<T: Clone + BiHashItem> ItemMap<T> for BiHashMap<T, HashBuilder, Alloc> {
     type K1 = T::K1;
     type RefMut = ForLt![<'a> = bi_hash_map::RefMut<'a, T, HashBuilder>];
-    type Iter = ForLt![<'a> = bi_hash_map::Iter<'a, T>];
-    type IterMut =
-        ForLt![<'a> = bi_hash_map::IterMut<'a, T, HashBuilder, Alloc>];
+    type Iter<'a>
+        = bi_hash_map::Iter<'a, T>
+    where
+        Self: 'a;
+    type IterMut<'a>
+        = bi_hash_map::IterMut<'a, T, HashBuilder, Alloc>
+    where
+        Self: 'a;
     type IntoIter = bi_hash_map::IntoIter<T, Alloc>;
 
     fn map_kind() -> MapKind {
@@ -439,10 +454,10 @@ impl<T: Clone + BiHashItem> ItemMap<T> for BiHashMap<T, HashBuilder, Alloc> {
     }
 
     #[cfg(feature = "serde")]
-    fn serialize_as_map<'a>(&self) -> Result<String, serde_json::Error>
+    fn serialize_as_map<'a>(&'a self) -> Result<String, serde_json::Error>
     where
-        T: 'a + serde::Serialize,
-        Self::K1<'a>: serde::Serialize,
+        T: serde::Serialize,
+        Feed<'a, Self::K1>: serde::Serialize,
     {
         let mut out: Vec<u8> = Vec::new();
         let mut ser = serde_json::Serializer::new(&mut out);
@@ -494,11 +509,11 @@ impl<T: Clone + BiHashItem> ItemMap<T> for BiHashMap<T, HashBuilder, Alloc> {
         self.insert_unique(value)
     }
 
-    fn iter(&self) -> Feed<'_, Self::Iter> {
+    fn iter(&self) -> Self::Iter<'_> {
         self.iter()
     }
 
-    fn iter_mut(&mut self) -> Feed<'_, Self::IterMut> {
+    fn iter_mut(&mut self) -> Self::IterMut<'_> {
         self.iter_mut()
     }
 
@@ -514,10 +529,14 @@ where
     type K1 = T::Key;
     type RefMut = ForLt![<'a>
         = id_hash_map::RefMut<'a, T, HashBuilder>];
-    type Iter = ForLt![<'a>
-        = id_hash_map::Iter<'a, T>];
-    type IterMut = ForLt![<'a>
-        = id_hash_map::IterMut<'a, T, HashBuilder, Alloc>];
+    type Iter<'a>
+        = id_hash_map::Iter<'a, T>
+    where
+        Self: 'a;
+    type IterMut<'a>
+        = id_hash_map::IterMut<'a, T, HashBuilder, Alloc>
+    where
+        Self: 'a;
     type IntoIter = id_hash_map::IntoIter<T, Alloc>;
 
     fn map_kind() -> MapKind {
@@ -549,10 +568,10 @@ where
     }
 
     #[cfg(feature = "serde")]
-    fn serialize_as_map<'a>(&self) -> Result<String, serde_json::Error>
+    fn serialize_as_map<'a>(&'a self) -> Result<String, serde_json::Error>
     where
-        T: 'a + serde::Serialize,
-        Self::K1<'a>: serde::Serialize,
+        T: serde::Serialize,
+        Feed<'a, Self::K1>: serde::Serialize,
     {
         let mut out: Vec<u8> = Vec::new();
         let mut ser = serde_json::Serializer::new(&mut out);
@@ -604,11 +623,11 @@ where
         self.insert_unique(value)
     }
 
-    fn iter(&self) -> Feed<'_, Self::Iter> {
+    fn iter(&self) -> Self::Iter<'_> {
         self.iter()
     }
 
-    fn iter_mut(&mut self) -> Feed<'_, Self::IterMut> {
+    fn iter_mut(&mut self) -> Self::IterMut<'_> {
         self.iter_mut()
     }
 
@@ -625,8 +644,14 @@ where
 {
     type K1 = T::Key;
     type RefMut = ForLt![<'a> = id_ord_map::RefMut<'a, T>];
-    type Iter = ForLt![<'a> = id_ord_map::Iter<'a, T>];
-    type IterMut = ForLt![<'a> = id_ord_map::IterMut<'static, T>];
+    type Iter<'a>
+        = id_ord_map::Iter<'a, T>
+    where
+        Self: 'a;
+    type IterMut<'a>
+        = id_ord_map::IterMut<'a, T>
+    where
+        Self: 'a;
     type IntoIter = id_ord_map::IntoIter<T>;
 
     fn map_kind() -> MapKind {
@@ -642,10 +667,10 @@ where
     }
 
     #[cfg(feature = "serde")]
-    fn serialize_as_map<'a>(&self) -> Result<String, serde_json::Error>
+    fn serialize_as_map<'a>(&'a self) -> Result<String, serde_json::Error>
     where
-        T: 'a + serde::Serialize,
-        Self::K1<'a>: serde::Serialize,
+        T: serde::Serialize,
+        Feed<'a, Self::K1>: serde::Serialize,
     {
         let mut out: Vec<u8> = Vec::new();
         let mut ser = serde_json::Serializer::new(&mut out);
@@ -688,11 +713,11 @@ where
         self.insert_unique(value)
     }
 
-    fn iter(&self) -> Feed<'_, Self::Iter> {
+    fn iter(&self) -> Self::Iter<'_> {
         self.iter()
     }
 
-    fn iter_mut(&mut self) -> Feed<'_, Self::IterMut> {
+    fn iter_mut(&mut self) -> Self::IterMut<'_> {
         self.iter_mut()
     }
 
@@ -708,10 +733,14 @@ where
     type K1 = T::K1;
     type RefMut = ForLt![<'a>
         = tri_hash_map::RefMut<'a, T, HashBuilder>];
-    type Iter = ForLt![<'a>
-        = tri_hash_map::Iter<'a, T>];
-    type IterMut = ForLt![<'a>
-        = tri_hash_map::IterMut<'a, T, HashBuilder, Alloc>];
+    type Iter<'a>
+        = tri_hash_map::Iter<'a, T>
+    where
+        Self: 'a;
+    type IterMut<'a>
+        = tri_hash_map::IterMut<'a, T, HashBuilder, Alloc>
+    where
+        Self: 'a;
     type IntoIter = tri_hash_map::IntoIter<T, Alloc>;
 
     fn map_kind() -> MapKind {
@@ -743,10 +772,10 @@ where
     }
 
     #[cfg(feature = "serde")]
-    fn serialize_as_map<'a>(&self) -> Result<String, serde_json::Error>
+    fn serialize_as_map<'a>(&'a self) -> Result<String, serde_json::Error>
     where
-        T: 'a + serde::Serialize,
-        Self::K1<'a>: serde::Serialize,
+        T: serde::Serialize,
+        Feed<'a, Self::K1>: serde::Serialize,
     {
         let mut out: Vec<u8> = Vec::new();
         let mut ser = serde_json::Serializer::new(&mut out);
@@ -798,11 +827,11 @@ where
         self.insert_unique(value)
     }
 
-    fn iter(&self) -> Feed<'_, Self::Iter> {
+    fn iter(&self) -> Self::Iter<'_> {
         self.iter()
     }
 
-    fn iter_mut(&mut self) -> Feed<'_, Self::IterMut> {
+    fn iter_mut(&mut self) -> Self::IterMut<'_> {
         self.iter_mut()
     }
 

@@ -443,27 +443,25 @@ impl<T, A: Allocator> ItemSet<T, A> {
         &mut self,
         indexes: [&ItemIndex; N],
     ) -> [Option<&mut T>; N] {
-        let len = self.items.len();
         let mut valid = [false; N];
         for i in 0..N {
-            let idx = indexes[i].as_u32() as usize;
-            if idx >= len {
-                continue;
-            }
-            // SAFETY: idx < len, so `items[idx]` is in bounds.
-            if !unsafe { self.items.get_unchecked(idx) }.is_occupied() {
-                continue;
-            }
-            let mut dup = false;
-            for j in 0..i {
-                if valid[j] && indexes[j].as_u32() == indexes[i].as_u32() {
-                    dup = true;
-                    break;
+            valid[i] = || -> bool {
+                let idx = indexes[i].as_u32() as usize;
+                let Some(item) = self.items.get(idx) else {
+                    return false;
+                };
+                let true = item.is_occupied() else {
+                    return false;
+                };
+                for j in 0..i {
+                    if valid[j] && indexes[j].as_u32() == indexes[i].as_u32() {
+                        // It's a duplicate index: it cannot be deemed valid
+                        // lest we violate disjointedness of the produced references.
+                        return false;
+                    }
                 }
-            }
-            if !dup {
-                valid[i] = true;
-            }
+                true
+            }();
         }
 
         let base = self.items.as_mut_ptr();
@@ -473,7 +471,10 @@ impl<T, A: Allocator> ItemSet<T, A> {
                 // SAFETY: we verified idx is in bounds, the slot is
                 // `Occupied`, and no earlier valid entry shares this
                 // index. Therefore the `&mut` references are disjoint.
-                unsafe { (*base.add(idx)).as_mut() }
+                let option: Option<&mut T> =
+                    unsafe { &mut *base.add(idx) }.as_mut();
+                // SAFETY: we've also checked that the value be occupied.
+                Some(unsafe { option.unwrap_unchecked() })
             } else {
                 None
             }
@@ -724,7 +725,7 @@ pub(crate) struct ItemSlotsPtr<'a, T> {
     /// that variance and drop-check work the same as `&'a mut [ItemSlot<T>]`.
     /// This deliberately does not mention `ItemSet<T, A>` so the iterator's
     /// public surface stays allocator-agnostic.
-    _marker: PhantomData<(&'a mut (), fn(&()) -> &mut [ItemSlot<T>])>,
+    _marker: PhantomData<&'a mut [ItemSlot<T>]>,
 }
 
 impl<T> fmt::Debug for ItemSlotsPtr<'_, T> {

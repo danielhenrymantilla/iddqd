@@ -139,14 +139,9 @@ where
 {
     fn into_ref(self) -> &'a T {
         let key: Feed<'a, T::Key> = (*self.borrowed).key();
-        // // SAFETY: The key is borrowed, then dropped immediately. T is valid for
-        // // 'a so T::Key is valid for 'a.
-        // let key: T::Key<'a> =
-        //     unsafe { std::mem::transmute::<T::Key<'_>, T::Key<'a>>(key) };
         if !self.hash.is_same_hash(&self.state, &key) {
             panic!("key changed during RefMut borrow");
         }
-
         self.borrowed
     }
 }

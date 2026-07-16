@@ -1,9 +1,8 @@
 //! Trait definitions for `BiHashMap`.
 
+use crate::{Equivalent, Feed, ForLt};
 use alloc::{boxed::Box, rc::Rc, sync::Arc};
 use core::hash::Hash;
-
-use crate::{Feed, ForLt};
 
 /// An item in a [`BiHashMap`].
 ///
@@ -48,10 +47,14 @@ use crate::{Feed, ForLt};
 /// [`BiHashMap`]: crate::BiHashMap
 pub trait BiHashItem {
     /// The first key type.
-    type K1: for<'a> ForLt<Of<'a>: Eq + Hash>;
+    type K1: for<'a> ForLt<
+        Of<'a>: Eq + Hash + for<'b> Equivalent<Feed<'b, Self::K1>>,
+    >;
 
     /// The second key type.
-    type K2: for<'a> ForLt<Of<'a>: Eq + Hash>;
+    type K2: for<'a> ForLt<
+        Of<'a>: Eq + Hash + for<'b> Equivalent<Feed<'b, Self::K2>>,
+    >;
 
     /// Retrieves the first key.
     fn key1(&self) -> Feed<'_, Self::K1>;

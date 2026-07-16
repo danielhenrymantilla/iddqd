@@ -24,10 +24,12 @@ workspace = true
 # on being able to implement it for our Global type, so we can pass it into
 # hashbrown.
 allocator-api2 = { workspace = true }
+better_scoped_tls.workspace = true
 daft = { workspace = true, optional = true }
-equivalent.workspace = true
+# equivalent.workspace = true
 foldhash = { workspace = true, optional = true }
 hashbrown.workspace = true
+iddqd-derive.workspace = true
 ref-cast = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
 serde_core = { workspace = true, optional = true }

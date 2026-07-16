@@ -1,6 +1,8 @@
 //! An example demonstrating `BiHashMap` use with complex borrowed keys.
 
-use iddqd::{BiHashItem, BiHashMap, bi_hash_map::Entry, bi_upcast};
+use iddqd::{
+    BiHashItem, BiHashMap, Feed, ForLt, bi_hash_map::Entry, bi_upcast,
+};
 use std::path::{Path, PathBuf};
 
 /// These are the items we'll store in the `BiHashMap`.
@@ -28,14 +30,14 @@ struct MyKey2<'a> {
 }
 
 impl BiHashItem for MyStruct {
-    type K1<'a> = MyKey1<'a>;
-    type K2<'a> = MyKey2<'a>;
+    type K1 = ForLt![<'a> = MyKey1<'a>];
+    type K2 = ForLt![<'a> = MyKey2<'a>];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         MyKey1 { b: self.b, c: &self.c }
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         MyKey2 { c: &self.c, d: &self.d }
     }
 

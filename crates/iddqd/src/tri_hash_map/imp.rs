@@ -1,21 +1,15 @@
 use super::{IntoIter, Iter, IterMut, RefMut, tables::TriHashMapTables};
 use crate::{
-    DefaultHashBuilder, TriHashItem,
+    DefaultHashBuilder, Feed, ForLt, TriHashItem,
     errors::{DuplicateItem, TryReserveError},
     internal::ValidationError,
     support::{
-        DefaultHashBuilder, Feed, ForLt, TriHashItem,
-        errors::DuplicateItem,
-        internal::ValidationError,
-        support::{
-            ItemIndex,
-            alloc::{Allocator, Global, global_alloc},
-            borrow::DormantMutRef,
-            fmt_utils::StrDisplayAsDebug,
-            hash_table,
-            item_set::ItemSet,
-            map_hash::MapHash,
-        },
+        ItemIndex,
+        alloc::{Allocator, Global, global_alloc},
+        fmt_utils::ImplDebugFromDisplay,
+        hash_table,
+        item_set::ItemSet,
+        map_hash::MapHash,
     },
 };
 use alloc::{collections::BTreeSet, vec::Vec};
@@ -1739,33 +1733,25 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// assert_eq!(map.get1(&1).unwrap().name, "Alice Updated");
     /// # }
     /// ```
-    pub fn get_mut_unique<'a, Q1, Q2, Q3>(
-        &'a mut self,
+    pub fn get_mut_unique<'map, Q1, Q2, Q3>(
+        &'map mut self,
         key1: &Q1,
         key2: &Q2,
         key3: &Q3,
-    ) -> Option<RefMut<'a, T, S>>
+    ) -> Option<RefMut<'map, T, S>>
     where
-        Q1: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
-        Q2: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
-        Q3: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
+        Q1: ?Sized + Hash + for<'local> Equivalent<Feed<'local, T::K1>>,
+        Q2: ?Sized + Hash + for<'local> Equivalent<Feed<'local, T::K2>>,
+        Q3: ?Sized + Hash + for<'local> Equivalent<Feed<'local, T::K3>>,
     {
-        let (dormant_map, index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let index = map.find1_index(key1)?;
-            let item = &map.items[index];
-            if !key2.equivalent(&item.key2()) || !key3.equivalent(&item.key3())
-            {
-                return None;
-            }
-            (dormant_map, index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-        let item = &mut awakened_map.items[index];
-        let state = awakened_map.tables.state.clone();
-        let hashes = awakened_map.tables.make_hashes(&item);
+        let index = self.find1_index(key1)?;
+        let item = &self.items[index];
+        if !key2.equivalent(&item.key2()) || !key3.equivalent(&item.key3()) {
+            return None;
+        }
+        let item = &mut self.items[index];
+        let state = self.tables.state.clone();
+        let hashes = self.tables.make_hashes(&item);
         Some(RefMut::new(state, hashes, item))
     }
 
@@ -1831,25 +1817,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
         key3: &Q3,
     ) -> Option<T>
     where
-        Q1: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
-        Q2: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
-        Q3: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
+        Q1: ?Sized + Hash + for<'local> Equivalent<Feed<'local, T::K1>>,
+        Q2: ?Sized + Hash + for<'local> Equivalent<Feed<'local, T::K2>>,
+        Q3: ?Sized + Hash + for<'local> Equivalent<Feed<'local, T::K3>>,
     {
-        let (dormant_map, remove_index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let remove_index = map.find1_index(key1)?;
-            let item = &map.items[remove_index];
-            if !key2.equivalent(&item.key2()) || !key3.equivalent(&item.key3())
-            {
-                return None;
-            }
-            (dormant_map, remove_index)
-        };
+        let remove_index = self.find1_index(key1)?;
+        let item = &self.items[remove_index];
+        if !key2.equivalent(&item.key2()) || !key3.equivalent(&item.key3()) {
+            return None;
+        }
 
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-
-        awakened_map.remove_by_index(remove_index)
+        self.remove_by_index(remove_index)
     }
 
     /// Returns true if the map contains the given `key1`.
@@ -2009,19 +1987,12 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn get1_mut<'a, Q>(&'a mut self, key1: &Q) -> Option<RefMut<'a, T, S>>
     where
-        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
+        Q: ?Sized + Hash + for<'local> Equivalent<Feed<'local, T::K1>>,
     {
-        let (dormant_map, index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let index = map.find1_index(key1)?;
-            (dormant_map, index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-        let item = &mut awakened_map.items[index];
-        let state = awakened_map.tables.state.clone();
-        let hashes = awakened_map.tables.make_hashes(&item);
+        let index = self.find1_index(key1)?;
+        let item = &mut self.items[index];
+        let state = self.tables.state.clone();
+        let hashes = self.tables.make_hashes(&item);
         Some(RefMut::new(state, hashes, item))
     }
 
@@ -2075,18 +2046,10 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn remove1<'a, Q>(&'a mut self, key1: &Q) -> Option<T>
     where
-        Q: Hash + Equivalent<Feed<'a, T::K1>> + ?Sized,
+        Q: Hash + for<'b> Equivalent<Feed<'b, T::K1>> + ?Sized,
     {
-        let (dormant_map, remove_index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let remove_index = map.find1_index(key1)?;
-            (dormant_map, remove_index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-
-        awakened_map.remove_by_index(remove_index)
+        let remove_index = self.find1_index(key1)?;
+        self.remove_by_index(remove_index)
     }
 
     /// Returns true if the map contains the given `key2`.
@@ -2246,19 +2209,12 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn get2_mut<'a, Q>(&'a mut self, key2: &Q) -> Option<RefMut<'a, T, S>>
     where
-        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
+        Q: Hash + for<'b> Equivalent<Feed<'b, T::K2>> + ?Sized,
     {
-        let (dormant_map, index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let index = map.find2_index(key2)?;
-            (dormant_map, index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-        let item = &mut awakened_map.items[index];
-        let state = awakened_map.tables.state.clone();
-        let hashes = awakened_map.tables.make_hashes(&item);
+        let index = self.find2_index(key2)?;
+        let item = &mut self.items[index];
+        let state = self.tables.state.clone();
+        let hashes = self.tables.make_hashes(&item);
         Some(RefMut::new(state, hashes, item))
     }
 
@@ -2312,18 +2268,10 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn remove2<'a, Q>(&'a mut self, key2: &Q) -> Option<T>
     where
-        Q: Hash + Equivalent<Feed<'a, T::K2>> + ?Sized,
+        Q: Hash + for<'b> Equivalent<Feed<'b, T::K2>> + ?Sized,
     {
-        let (dormant_map, remove_index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let remove_index = map.find2_index(key2)?;
-            (dormant_map, remove_index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-
-        awakened_map.remove_by_index(remove_index)
+        let remove_index = self.find2_index(key2)?;
+        self.remove_by_index(remove_index)
     }
 
     /// Returns true if the map contains the given `key3`.
@@ -2483,19 +2431,12 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn get3_mut<'a, Q>(&'a mut self, key3: &Q) -> Option<RefMut<'a, T, S>>
     where
-        Q: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
+        Q: Hash + for<'b> Equivalent<Feed<'b, T::K3>> + ?Sized,
     {
-        let (dormant_map, index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let index = map.find3_index(key3)?;
-            (dormant_map, index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-        let item = &mut awakened_map.items[index];
-        let state = awakened_map.tables.state.clone();
-        let hashes = awakened_map.tables.make_hashes(&item);
+        let index = self.find3_index(key3)?;
+        let item = &mut self.items[index];
+        let state = self.tables.state.clone();
+        let hashes = self.tables.make_hashes(&item);
         Some(RefMut::new(state, hashes, item))
     }
 
@@ -2549,18 +2490,10 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// ```
     pub fn remove3<'a, Q>(&'a mut self, key3: &Q) -> Option<T>
     where
-        Q: Hash + Equivalent<Feed<'a, T::K3>> + ?Sized,
+        Q: ?Sized + Hash + for<'local> Equivalent<Feed<'local, T::K3>>,
     {
-        let (dormant_map, remove_index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let remove_index = map.find3_index(key3)?;
-            (dormant_map, remove_index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-
-        awakened_map.remove_by_index(remove_index)
+        let remove_index = self.find3_index(key3)?;
+        self.remove_by_index(remove_index)
     }
 
     /// Retains only the elements specified by the predicate.
@@ -2641,12 +2574,11 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// assert!(map.get1(&2).is_none());
     /// # }
     /// ```
-    pub fn retain<'a, F>(&'a mut self, mut f: F)
+    pub fn retain<F>(&mut self, mut f: F)
     where
-        F: for<'b> FnMut(RefMut<'b, T, S>) -> bool,
+        F: for<'local> FnMut(RefMut<'local, T, S>) -> bool,
     {
         let hash_state = self.tables.state.clone();
-        let (_, mut dormant_items) = DormantMutRef::new(&mut self.items);
         let mut removed_item = None;
 
         self.tables.k1_to_item.retain(|index| {
@@ -2661,90 +2593,55 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
             // `items`, `k2_to_item`, and `k3_to_item`.
             drop(removed_item.take());
 
-            let (item, dormant_items) = {
-                // SAFETY: All uses of `items` ended in the previous iteration.
-                let items = unsafe { dormant_items.reborrow() };
-                let (items, dormant_items) = DormantMutRef::new(items);
-                let item: &'a mut T = items
-                    .get_mut(index)
-                    .expect("all indexes are present in self.items");
-                (item, dormant_items)
-            };
+            let item: &mut T = self
+                .items
+                .get_mut(index)
+                .expect("all indexes are present in self.items");
 
-            let (hashes, dormant_item) = {
-                let (item, dormant_item): (&'a mut T, _) =
-                    DormantMutRef::new(item);
-                // Use T::k1(item) rather than item.key() to force the key
-                // trait function to be called for T rather than &mut T.
-                let key1 = T::key1(item);
-                let key2 = T::key2(item);
-                let key3 = T::key3(item);
-                let hash1 = hash_state.hash_one(key1);
-                let hash2 = hash_state.hash_one(key2);
-                let hash3 = hash_state.hash_one(key3);
-                (
-                    [
-                        MapHash::new(hash1),
-                        MapHash::new(hash2),
-                        MapHash::new(hash3),
-                    ],
-                    dormant_item,
-                )
-            };
-
+            let key1 = item.key1();
+            let key2 = item.key2();
+            let key3 = item.key3();
+            let hashes = [
+                MapHash::new(hash_state.hash_one(key1)),
+                MapHash::new(hash_state.hash_one(key2)),
+                MapHash::new(hash_state.hash_one(key3)),
+            ];
             let hash2 = hashes[1].hash();
             let hash3 = hashes[2].hash();
-            let retain = {
-                // SAFETY: The original item is no longer used after the second
-                // block above. dormant_items, from which item is derived, is
-                // currently dormant.
-                let item = unsafe { dormant_item.awaken() };
 
-                let ref_mut = RefMut::new(hash_state.clone(), hashes, item);
-                f(ref_mut)
+            let _should_retain @ false =
+                f(RefMut::new(hash_state.clone(), hashes, item))
+            else {
+                return true;
             };
 
-            if retain {
-                true
+            let k2_entry = self
+                .tables
+                .k2_to_item
+                .find_entry_by_hash(hash2, |map2_index| map2_index == index);
+            let k3_entry = self
+                .tables
+                .k3_to_item
+                .find_entry_by_hash(hash3, |map3_index| map3_index == index);
+
+            if let Ok(k2_entry) = k2_entry {
+                k2_entry.remove();
             } else {
-                let k2_entry = self
-                    .tables
-                    .k2_to_item
-                    .find_entry_by_hash(hash2, |map2_index| {
-                        map2_index == index
-                    });
-                let k3_entry = self
-                    .tables
-                    .k3_to_item
-                    .find_entry_by_hash(hash3, |map3_index| {
-                        map3_index == index
-                    });
-
-                if let Ok(k2_entry) = k2_entry {
-                    k2_entry.remove();
-                } else {
-                    self.tables.k2_to_item.remove_by_index(index);
-                }
-                if let Ok(k3_entry) = k3_entry {
-                    k3_entry.remove();
-                } else {
-                    self.tables.k3_to_item.remove_by_index(index);
-                }
-
-                // SAFETY: The original items is no longer used after the first
-                // block above, and item + dormant_item have been dropped after
-                // being used above. The k2/k3 work between them borrows only
-                // `self.tables.k2_to_item` and `self.tables.k3_to_item`,
-                // which are disjoint from `self.items`.
-                let items = unsafe { dormant_items.awaken() };
-                removed_item = Some(
-                    items
-                        .remove(index)
-                        .expect("all indexes are present in self.items"),
-                );
-
-                false
+                self.tables.k2_to_item.remove_by_index(index);
             }
+            if let Ok(k3_entry) = k3_entry {
+                k3_entry.remove();
+            } else {
+                self.tables.k3_to_item.remove_by_index(index);
+            }
+
+            removed_item = Some(
+                self.items
+                    .remove(index)
+                    .expect("all indexes are present in self.items"),
+            );
+
+            false
         });
 
         // Anything in `removed_item` is implicitly dropped now.
@@ -3050,9 +2947,9 @@ where
         // misleading (suggests maps of tuples). The best we can do
         // instead is to show "{k1: abc, k2: xyz, k3: def}"
         f.debug_map()
-            .entry(&StrDisplayAsDebug("k1"), &self.key1)
-            .entry(&StrDisplayAsDebug("k2"), &self.key2)
-            .entry(&StrDisplayAsDebug("k3"), &self.key3)
+            .entry(&ImplDebugFromDisplay("k1"), &self.key1)
+            .entry(&ImplDebugFromDisplay("k2"), &self.key2)
+            .entry(&ImplDebugFromDisplay("k3"), &self.key3)
             .finish()
     }
 }

@@ -9,7 +9,6 @@ use crate::{
     support::{
         ItemIndex,
         alloc::{Global, global_alloc},
-        borrow::DormantMutRef,
         item_set::ItemSet,
         map_hash::MapHash,
     },
@@ -800,7 +799,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn contains_key<'a, Q>(&'a self, key: &Q) -> bool
     where
-        Q: ?Sized + for<'b> Comparable<Feed<'b, T::Key>>,
+        Q: ?Sized + Comparable<Feed<'a, T::Key>>,
     {
         self.find_index(key).is_some()
     }
@@ -836,7 +835,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn get<'a, Q>(&'a self, key: &Q) -> Option<&'a T>
     where
-        Q: ?Sized + for<'b> Comparable<Feed<'b, T::Key>>,
+        Q: ?Sized + Comparable<Feed<'a, T::Key>>,
     {
         self.find(key)
     }
@@ -875,22 +874,13 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn get_mut<'a, Q>(&'a mut self, key: &Q) -> Option<RefMut<'a, T>>
     where
-        Q: ?Sized + for<'b> Comparable<Feed<'b, T::Key>>,
-        for<'b> Feed<'b, T::Key>: Hash,
+        Q: ?Sized + for<'local> Comparable<Feed<'local, T::Key>>,
+        T::Key: for<'b> ForLt<Of<'b>: Hash>,
     {
         let index = self.find_index(key)?;
-
-        // SAFETY: `map` is not used after this point.
         let item = &mut self.items[index];
         let state = self.tables.state().clone();
-        let (hash, dormant) = {
-            let (item, dormant) = DormantMutRef::new(item);
-            let hash = self.tables.make_hash(item);
-            (hash, dormant)
-        };
-
-        // SAFETY: the original item is not used after this point.
-        let item = unsafe { dormant.awaken() };
+        let hash = self.tables.make_hash(item);
         Some(RefMut::new(state, hash, item))
     }
 
@@ -990,34 +980,30 @@ impl<T: IdOrdItem> IdOrdMap<T> {
         // rather than a shorter lifetime.
         //
         // By accepting owned keys, we can use the upcast functions to convert
-        // them to a shorter lifetime (so this function accepts T::Key<'_>
-        // rather than Feed<'a, T::Key>).
+        // them to a shorter lifetime (so this function accepts `Feed<'_, T::Key>`
+        // rather than `Feed<'a, T::Key>`).
         //
         // Really, the solution here is to allow GATs to require covariant
         // parameters. If that were allowed, the borrow checker should be able
         // to figure out that keys don't need to be borrowed for the full 'a,
         // just for some shorter lifetime.
-        let (map, dormant_map) = DormantMutRef::new(self);
+        //
+        // TODO(Daniel): we should explore this limitation, it may be avoidable
+        // through carefully crafted usage of `for<>`.
         let key = T::upcast_key(key);
         {
             // index is explicitly typed to show that it has a trivial Drop impl
             // that doesn't capture anything from map.
-            let index: Option<ItemIndex> = map
+            let index: Option<ItemIndex> = self
                 .tables
                 .key_to_item
-                .find_index(&key, |index| map.items[index].key());
+                .find_index(&key, |index| self.items[index].key());
             if let Some(index) = index {
                 drop(key);
-                return Entry::Occupied(
-                    // SAFETY: `map` is not used after this point.
-                    unsafe { OccupiedEntry::new(dormant_map, index) },
-                );
+                return Entry::Occupied(OccupiedEntry::new(self, index));
             }
         }
-        Entry::Vacant(
-            // SAFETY: `map` is not used after this point.
-            unsafe { VacantEntry::new(dormant_map) },
-        )
+        Entry::Vacant(VacantEntry::new(self))
     }
 
     /// Returns the first item in the map. The key of this item is the minimum
@@ -1101,12 +1087,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, T>> {
         let index = self.tables.key_to_item.first()?;
-        let (_, dormant_map) = DormantMutRef::new(self);
-        Some(
-            // SAFETY: `map` is dropped immediately while creating the
-            // DormantMutRef.
-            unsafe { OccupiedEntry::new(dormant_map, index) },
-        )
+        Some(OccupiedEntry::new(self, index))
     }
 
     /// Removes and returns the first element in the map. The key of this
@@ -1238,12 +1219,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, T>> {
         let index = self.tables.key_to_item.last()?;
-        let (_, dormant_map) = DormantMutRef::new(self);
-        Some(
-            // SAFETY: `map` is dropped immediately while creating the
-            // DormantMutRef.
-            unsafe { OccupiedEntry::new(dormant_map, index) },
-        )
+        Some(OccupiedEntry::new(self, index))
     }
 
     /// Removes and returns the last element in the map. The key of this
@@ -1339,7 +1315,6 @@ impl<T: IdOrdItem> IdOrdMap<T> {
         for<'b> Feed<'b, T::Key>: Hash,
     {
         let hash_state = self.tables.state().clone();
-        let (_, mut dormant_items) = DormantMutRef::new(&mut self.items);
         let mut removed_item = None;
 
         self.tables.key_to_item.retain(|index| {
@@ -1354,50 +1329,25 @@ impl<T: IdOrdItem> IdOrdMap<T> {
             // `items`.
             drop(removed_item.take());
 
-            let (item, dormant_items) = {
-                // SAFETY: All uses of `items` ended in the previous iteration.
-                let items = unsafe { dormant_items.reborrow() };
-                let (items, dormant_items) = DormantMutRef::new(items);
-                let item: &'a mut T = items
-                    .get_mut(index)
-                    .expect("all indexes are present in self.items");
-                (item, dormant_items)
+            let item: &mut T = self
+                .items
+                .get_mut(index)
+                .expect("all indexes are present in self.items");
+            let key = T::key(item);
+            let hash = MapHash::new(hash_state.hash_one(key));
+
+            let _should_retain @ false =
+                f(RefMut::new(hash_state.clone(), hash, item))
+            else {
+                return true;
             };
 
-            let (hash, dormant_item) = {
-                let (item, dormant_item): (&'a mut T, _) =
-                    DormantMutRef::new(item);
-                // Use T::key(item) rather than item.key() to force the key
-                // trait function to be called for T rather than &mut T.
-                let key = T::key(item);
-                let hash = hash_state.hash_one(key);
-                (MapHash::new(hash), dormant_item)
-            };
-
-            let retain = {
-                // SAFETY: The original item is no longer used after the second
-                // block above. dormant_items, from which item is derived, is
-                // currently dormant.
-                let item = unsafe { dormant_item.awaken() };
-
-                let ref_mut = RefMut::new(hash_state.clone(), hash, item);
-                f(ref_mut)
-            };
-
-            if retain {
-                true
-            } else {
-                // SAFETY: The original items is no longer used after the first
-                // block above, and item + dormant_item have been dropped after
-                // being used above.
-                let items = unsafe { dormant_items.awaken() };
-                removed_item = Some(
-                    items
-                        .remove(index)
-                        .expect("all indexes are present in self.items"),
-                );
-                false
-            }
+            removed_item = Some(
+                self.items
+                    .remove(index)
+                    .expect("all indexes are present in self.items"),
+            );
+            false
         });
 
         // Anything in `removed_item` is implicitly dropped now.
@@ -1405,7 +1355,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
 
     fn find<'a, Q>(&'a self, k: &Q) -> Option<&'a T>
     where
-        Q: ?Sized + for<'b> Comparable<Feed<'b, T::Key>>,
+        Q: ?Sized + Comparable<Feed<'a, T::Key>>,
     {
         self.find_index(k).map(|ix| &self.items[ix])
     }
@@ -1430,23 +1380,16 @@ impl<T: IdOrdItem> IdOrdMap<T> {
         self.items.get(index)
     }
 
-    pub(super) fn get_by_index_mut<'a>(
-        &'a mut self,
+    pub(super) fn get_by_index_mut<'map>(
+        &'map mut self,
         index: ItemIndex,
-    ) -> Option<RefMut<'a, T>>
+    ) -> Option<RefMut<'map, T>>
     where
-        for<'b> Feed<'b, T::Key>: Hash,
+        for<'local> Feed<'local, T::Key>: Hash,
     {
         let state = self.tables.state().clone();
-        let (hash, dormant) = {
-            let item: &'a mut T = self.items.get_mut(index)?;
-            let (item, dormant) = DormantMutRef::new(item);
-            let hash = self.tables.make_hash(item);
-            (hash, dormant)
-        };
-
-        // SAFETY: item is no longer used after the above point.
-        let item = unsafe { dormant.awaken() };
+        let item: &'map mut T = self.items.get_mut(index)?;
+        let hash = self.tables.make_hash(item);
         Some(RefMut::new(state, hash, item))
     }
 
@@ -1584,20 +1527,6 @@ where
 
         for item in self.iter() {
             let key = item.key();
-
-            // // SAFETY:
-            // //
-            // // * Lifetime extension: for a type T and two lifetime params 'a and
-            // //   'b, T<'a> and T<'b> aren't guaranteed to have the same layout,
-            // //   but (a) that is true today and (b) it would be shocking and
-            // //   break half the Rust ecosystem if that were to change in the
-            // //   future.
-            // // * We only use key within the scope of this block before immediately
-            // //   dropping it. In particular, map.entry calls key.fmt() without
-            // //   holding a reference to it.
-            // let key: Feed<'a, T::Key> =
-            //     unsafe { core::mem::transmute::<T::Key<'_>, Feed<'a, T::Key>>(key) };
-
             map.entry(&key, &item);
         }
         map.finish()

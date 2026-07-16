@@ -1,5 +1,5 @@
 use crate::{
-    DefaultHashBuilder, TriHashItem, TriHashMap,
+    DefaultHashBuilder, Feed, TriHashItem, TriHashMap,
     support::alloc::{Allocator, Global},
 };
 use core::{fmt, hash::BuildHasher, marker::PhantomData};
@@ -347,29 +347,17 @@ where
 {
     /// Serializes a `TriHashMap` as a JSON object/map using `key1()` as keys.
     pub fn serialize<'a, Ser>(
-        map: &TriHashMap<T, S, A>,
+        map: &'a TriHashMap<T, S, A>,
         serializer: Ser,
     ) -> Result<Ser::Ok, Ser::Error>
     where
-        T: 'a + TriHashItem + Serialize,
-        T::K1<'a>: Serialize,
+        T: TriHashItem + Serialize,
+        Feed<'a, T::K1>: Serialize,
         Ser: Serializer,
     {
         let mut ser_map = serializer.serialize_map(Some(map.len()))?;
         for item in map.iter() {
             let key1 = item.key1();
-            // SAFETY:
-            //
-            // * Lifetime extension: for a type T and two lifetime params 'a and
-            //   'b, T<'a> and T<'b> aren't guaranteed to have the same layout,
-            //   but (a) that is true today and (b) it would be shocking and
-            //   break half the Rust ecosystem if that were to change in the
-            //   future.
-            // * We only use key within the scope of this block before
-            //   immediately dropping it. In particular, ser_map.serialize_entry
-            //   serializes the key without holding a reference to it.
-            let key1 =
-                unsafe { core::mem::transmute::<T::K1<'_>, T::K1<'a>>(key1) };
             ser_map.serialize_entry(&key1, item)?;
         }
         ser_map.end()

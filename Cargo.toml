@@ -16,6 +16,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ["cfg(doc_cfg)", "cfg(soteria)"]
 
 [workspace.dependencies]
 allocator-api2 = { version = "0.2.21", default-features = false, features = ["alloc"] }
+better_scoped_tls.version = "1.0.1"
 bumpalo = { version = "3.19.0", features = ["allocator-api2", "collections"] }
 camino = "1.2.4"
 criterion = "0.7.0"
@@ -32,6 +33,7 @@ hashbrown = { version = "0.17.1", default-features = false, features = ["allocat
 hegeltest = "0.23.1"
 hugealloc = "0.1.1"
 iddqd = { path = "crates/iddqd", default-features = false }
+iddqd-derive.path = "crates/iddqd-derive"
 iddqd-test-utils = { path = "crates/iddqd-test-utils" }
 polonius-the-crab.version = "0.5.0"
 proptest = { version = "1.7.0", default-features = false, features = ["std"] }

@@ -33,9 +33,9 @@ impl IdOrdMapTables {
         Ok(())
     }
 
-    pub(super) fn make_hash<'a, T>(&self, item: &'a T) -> MapHash
+    pub(super) fn make_hash<'any, T>(&self, item: &'any T) -> MapHash
     where
-        T::Key: ForLt<Of<'a>: Hash>,
+        T::Key: ForLt<Of<'any>: Hash>,
         T: IdOrdItem,
     {
         self.key_to_item.compute_hash(item.key())

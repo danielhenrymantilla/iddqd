@@ -1,9 +1,9 @@
 pub(crate) mod alloc;
-pub(crate) mod borrow;
 #[cfg(feature = "std")]
 pub(crate) mod btree_table;
 #[cfg(feature = "daft")]
 pub(crate) mod daft_utils;
+pub(crate) mod equivalent;
 pub(crate) mod fmt_utils;
 pub(crate) mod hash_builder;
 pub(crate) mod hash_table;

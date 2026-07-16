@@ -1,9 +1,7 @@
 //! Trait definitions for `TriHashMap`.
 
+use crate::{Feed, ForLtEquivalent};
 use alloc::{boxed::Box, rc::Rc, sync::Arc};
-use core::hash::Hash;
-
-use crate::{Feed, ForLt};
 
 /// An item in a [`TriHashMap`].
 ///
@@ -64,13 +62,13 @@ use crate::{Feed, ForLt};
 /// [`TriHashMap`]: crate::TriHashMap
 pub trait TriHashItem {
     /// The first key type.
-    type K1: for<'a> ForLt<Of<'a>: Eq + Hash>;
+    type K1: ForLtEquivalent;
 
     /// The second key type.
-    type K2: for<'a> ForLt<Of<'a>: Eq + Hash>;
+    type K2: ForLtEquivalent;
 
     /// The third key type.
-    type K3: for<'a> ForLt<Of<'a>: Eq + Hash>;
+    type K3: ForLtEquivalent;
 
     /// Retrieves the first key.
     fn key1(&self) -> Feed<'_, Self::K1>;

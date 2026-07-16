@@ -1,4 +1,4 @@
-use iddqd::{IdHashItem, IdOrdItem, id_upcast};
+use iddqd::{Feed, ForLt, IdHashItem, IdOrdItem, id_upcast};
 
 #[derive(Debug)]
 pub struct RecordOwnedU32 {
@@ -7,9 +7,9 @@ pub struct RecordOwnedU32 {
 }
 
 impl IdHashItem for RecordOwnedU32 {
-    type Key<'a> = u32;
+    type Key = ForLt![<'a> = u32];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.index
     }
 
@@ -17,9 +17,9 @@ impl IdHashItem for RecordOwnedU32 {
 }
 
 impl IdOrdItem for RecordOwnedU32 {
-    type Key<'a> = u32;
+    type Key = ForLt![<'a> = u32];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.index
     }
 
@@ -33,9 +33,9 @@ pub struct RecordBorrowedU32 {
 }
 
 impl IdHashItem for RecordBorrowedU32 {
-    type Key<'a> = &'a u32;
+    type Key = ForLt![<'a> = &'a u32];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         &self.index
     }
 
@@ -43,9 +43,9 @@ impl IdHashItem for RecordBorrowedU32 {
 }
 
 impl IdOrdItem for RecordBorrowedU32 {
-    type Key<'a> = &'a u32;
+    type Key = ForLt![<'a> = &'a u32];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         &self.index
     }
 
@@ -69,9 +69,9 @@ pub struct RecordLargeOwnedU32 {
 }
 
 impl IdHashItem for RecordLargeOwnedU32 {
-    type Key<'a> = u32;
+    type Key = ForLt![<'a> = u32];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.index
     }
 
@@ -79,9 +79,9 @@ impl IdHashItem for RecordLargeOwnedU32 {
 }
 
 impl IdOrdItem for RecordLargeOwnedU32 {
-    type Key<'a> = u32;
+    type Key = ForLt![<'a> = u32];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.index
     }
 
@@ -95,9 +95,9 @@ pub struct RecordLargeBorrowedU32 {
 }
 
 impl IdHashItem for RecordLargeBorrowedU32 {
-    type Key<'a> = &'a u32;
+    type Key = ForLt![<'a> = &'a u32];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         &self.index
     }
 
@@ -105,9 +105,9 @@ impl IdHashItem for RecordLargeBorrowedU32 {
 }
 
 impl IdOrdItem for RecordLargeBorrowedU32 {
-    type Key<'a> = &'a u32;
+    type Key = ForLt![<'a> = &'a u32];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         &self.index
     }
 
