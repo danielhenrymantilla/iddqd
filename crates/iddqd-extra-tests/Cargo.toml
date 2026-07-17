@@ -1,0 +1,10 @@
+[package]
+name = "iddqd-extra-tests"
+version = "0.1.0"
+edition = "2024"
+
+[dev-dependencies]
+iddqd = { workspace = true, features = ["serde"] }
+iddqd-test-utils = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive"] }
+trybuild.workspace = true

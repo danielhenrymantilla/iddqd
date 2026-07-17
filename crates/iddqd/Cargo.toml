@@ -85,6 +85,7 @@ required-features = ["default-hasher", "schemars08"]
 
 [[test]]
 path = "tests/exploit.rs"
+test = false
 name = "exploit"
 required-features = ["serde"]
 

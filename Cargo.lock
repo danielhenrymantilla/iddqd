@@ -638,6 +638,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "iddqd-extra-tests"
+version = "0.1.0"
+dependencies = [
+ "iddqd",
+ "iddqd-test-utils",
+ "serde",
+ "trybuild",
+]
+
+[[package]]
 name = "iddqd-soteria-runner"
 version = "0.1.0"
 
