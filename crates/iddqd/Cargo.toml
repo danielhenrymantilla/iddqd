@@ -79,6 +79,11 @@ required-features = ["default-hasher"]
 name = "schemars-examples"
 required-features = ["default-hasher", "schemars08"]
 
+[[test]]
+path = "tests/exploit.rs"
+name = "exploit"
+required-features = ["serde"]
+
 [package.metadata.release]
 pre-release-replacements = [
     { file = "../iddqd-extended-examples/examples/typify-types.rs", search = "iddqd\" = \".*\"", replace = "iddqd\" = \"{{version}}\"", exactly = 1 },
