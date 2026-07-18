@@ -31,6 +31,7 @@ foldhash = "0.2.0"
 # IdHashMap<T, S>.)
 hashbrown = { version = "0.17.1", default-features = false, features = ["allocator-api2", "inline-more"] }
 hegeltest = "0.23.1"
+higher-kinded-types = "0.3.0"
 hugealloc = "0.1.1"
 iddqd = { path = "crates/iddqd", default-features = false }
 iddqd-derive.path = "crates/iddqd-derive"

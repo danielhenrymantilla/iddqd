@@ -560,6 +560,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "higher-kinded-types"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2eba084dcea677d383df19bbc5c38127a42ef5f986a40d9cff3c870ed175b78f"
+dependencies = [
+ "macro_rules_attribute",
+ "never-say-never",
+ "paste",
+]
+
+[[package]]
 name = "hugealloc"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -581,6 +592,7 @@ dependencies = [
  "foldhash 0.2.0",
  "hashbrown 0.17.1",
  "hegeltest",
+ "higher-kinded-types 0.3.0",
  "iddqd-derive",
  "iddqd-test-utils",
  "polonius-the-crab",
@@ -878,7 +890,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec242d7eccbb2fd8b3b5b6e3cf89f94a91a800f469005b44d154359609f8af72"
 dependencies = [
- "higher-kinded-types",
+ "higher-kinded-types 0.2.1",
  "never-say-never",
 ]
 

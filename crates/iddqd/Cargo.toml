@@ -29,6 +29,7 @@ daft = { workspace = true, optional = true }
 # equivalent.workspace = true
 foldhash = { workspace = true, optional = true }
 hashbrown.workspace = true
+higher-kinded-types.workspace = true
 iddqd-derive.workspace = true
 ref-cast = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
