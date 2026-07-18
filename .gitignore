@@ -4,3 +4,4 @@
 *.llbc.json
 # Hegel property-test failure database, created on failing local runs.
 /.hegel/
+/.vscode/
