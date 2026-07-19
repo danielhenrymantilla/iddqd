@@ -154,6 +154,21 @@ where
     }
 }
 
+impl<T, U> Comparable<[U]> for [T]
+where
+    T: Comparable<U>,
+{
+    fn compare(&self, keys: &[U]) -> Ordering {
+        for (l, r) in ::core::iter::zip(self, keys) {
+            match l.compare(r) {
+                Ordering::Equal => continue,
+                unequal => return unequal,
+            }
+        }
+        self.len().compare(&keys.len())
+    }
+}
+
 impl<T, U> Equivalent<Option<U>> for Option<T>
 where
     T: Equivalent<U>,
@@ -165,4 +180,28 @@ where
             _ => false,
         }
     }
+}
+
+macro_rules! sliceable_impls {(
+    $(
+        $(#$cfg:tt reverse)?
+        ($left:ty, $right:ty)
+    ),* $(,)?
+) => ($(
+    impl Equivalent<$right> for $left {
+        fn equivalent(&self, key: &$right) -> bool {
+            self[..].equivalent(&key[..])
+        }
+    }
+
+    $(#$cfg)?
+    sliceable_impls! {
+        #[cfg(false)] reverse
+        ($right, $left)
+    }
+)*)}
+
+#[cfg(feature = "std")]
+sliceable_impls! {
+    (str, ::std::string::String),
 }

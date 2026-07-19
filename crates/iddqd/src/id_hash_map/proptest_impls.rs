@@ -48,7 +48,7 @@ where
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{IdHashItem, IdHashMap, id_hash_map, id_upcast};
+/// use iddqd::{IdHashItem, IdHashMap, id_hash_map, id_upcast, Feed, ForLt};
 /// use proptest::{
 ///     arbitrary::any, strategy::Strategy, test_runner::TestRunner,
 /// };
@@ -60,9 +60,9 @@ where
 /// }
 ///
 /// impl IdHashItem for Person {
-///     type Key<'a> = u32;
+///     type Key = ForLt![<'a> = u32];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         self.id
 ///     }
 ///     id_upcast!();
@@ -97,7 +97,7 @@ pub fn prop_strategy<T: Strategy>(
 /// # Examples
 ///
 /// ```
-/// use iddqd::{IdHashItem, IdHashMap, id_hash_map, id_upcast};
+/// use iddqd::{IdHashItem, IdHashMap, id_hash_map, id_upcast, Feed, ForLt};
 /// use proptest::{
 ///     arbitrary::any, strategy::Strategy, test_runner::TestRunner,
 /// };
@@ -110,9 +110,9 @@ pub fn prop_strategy<T: Strategy>(
 /// }
 ///
 /// impl IdHashItem for Person {
-///     type Key<'a> = u32;
+///     type Key = ForLt![<'a> = u32];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         self.id
 ///     }
 ///     id_upcast!();
@@ -152,7 +152,7 @@ pub fn prop_strategy_with_hasher<T: Strategy, S>(
 /// ```
 /// # #[cfg(feature = "allocator-api2")] {
 /// use allocator_api2::alloc::Global;
-/// use iddqd::{IdHashItem, IdHashMap, id_hash_map, id_upcast};
+/// use iddqd::{IdHashItem, IdHashMap, id_hash_map, id_upcast, Feed, ForLt};
 /// use proptest::{
 ///     arbitrary::any, strategy::Strategy, test_runner::TestRunner,
 /// };
@@ -165,9 +165,9 @@ pub fn prop_strategy_with_hasher<T: Strategy, S>(
 /// }
 ///
 /// impl IdHashItem for Person {
-///     type Key<'a> = u32;
+///     type Key = ForLt![<'a> = u32];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         self.id
 ///     }
 ///     id_upcast!();

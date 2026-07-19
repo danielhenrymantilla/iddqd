@@ -44,7 +44,7 @@ use core::{fmt, hash::BuildHasher};
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast};
+/// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug, PartialEq, Eq)]
 /// struct Item {
@@ -54,13 +54,13 @@ use core::{fmt, hash::BuildHasher};
 /// }
 ///
 /// impl BiHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
 ///     bi_upcast!();

@@ -11,7 +11,7 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc};
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+/// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
 ///
 /// // Define a struct with three keys.
 /// #[derive(Debug, PartialEq, Eq, Hash)]
@@ -23,19 +23,19 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc};
 ///
 /// // Implement TriHashItem for the struct.
 /// impl TriHashItem for Person {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
-///     type K3<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
+///     type K3 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
 ///
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
 ///
-///     fn key3(&self) -> Self::K3<'_> {
+///     fn key3(&self) -> Feed<'_, Self::K3> {
 ///         &self.email
 ///     }
 ///

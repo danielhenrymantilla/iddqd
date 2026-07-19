@@ -85,7 +85,7 @@ impl PreparedInsertOverwrite {
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+/// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
 ///
 /// // Define a struct with two keys and a value.
 /// #[derive(Debug, PartialEq, Eq)]
@@ -97,13 +97,13 @@ impl PreparedInsertOverwrite {
 ///
 /// // Implement BiHashItem for the struct.
 /// impl BiHashItem for MyItem {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         self.name
 ///     }
 ///
@@ -153,7 +153,7 @@ impl<T: BiHashItem> BiHashMap<T> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -163,13 +163,13 @@ impl<T: BiHashItem> BiHashMap<T> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -191,7 +191,7 @@ impl<T: BiHashItem> BiHashMap<T> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -201,13 +201,13 @@ impl<T: BiHashItem> BiHashMap<T> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -236,7 +236,7 @@ impl<T: BiHashItem, S: BuildHasher> BiHashMap<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     ///
     /// #[derive(Debug, PartialEq, Eq)]
@@ -247,13 +247,13 @@ impl<T: BiHashItem, S: BuildHasher> BiHashMap<T, S> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -275,7 +275,7 @@ impl<T: BiHashItem, S: BuildHasher> BiHashMap<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     ///
     /// #[derive(Debug, PartialEq, Eq)]
@@ -286,13 +286,13 @@ impl<T: BiHashItem, S: BuildHasher> BiHashMap<T, S> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -328,7 +328,7 @@ impl<T: BiHashItem, A: Clone + Allocator> BiHashMap<T, DefaultHashBuilder, A> {
     ///
     /// ```
     /// # #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))] {
-    /// use iddqd::{BiHashMap, BiHashItem, bi_upcast};
+    /// use iddqd::{BiHashMap, BiHashItem, bi_upcast, Feed, ForLt};
     /// # use iddqd_test_utils::bumpalo;
     ///
     /// #[derive(Debug, PartialEq, Eq)]
@@ -339,13 +339,13 @@ impl<T: BiHashItem, A: Clone + Allocator> BiHashMap<T, DefaultHashBuilder, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -380,7 +380,7 @@ impl<T: BiHashItem, A: Clone + Allocator> BiHashMap<T, DefaultHashBuilder, A> {
     ///
     /// ```
     /// # #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))] {
-    /// use iddqd::{BiHashMap, BiHashItem, bi_upcast};
+    /// use iddqd::{BiHashMap, BiHashItem, bi_upcast, Feed, ForLt};
     /// # use iddqd_test_utils::bumpalo;
     ///
     /// #[derive(Debug, PartialEq, Eq)]
@@ -391,13 +391,13 @@ impl<T: BiHashItem, A: Clone + Allocator> BiHashMap<T, DefaultHashBuilder, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -436,7 +436,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Clone + Allocator>
     ///
     /// ```
     /// # #[cfg(feature = "allocator-api2")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     /// # use iddqd_test_utils::bumpalo;
     ///
@@ -448,13 +448,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Clone + Allocator>
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -489,7 +489,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Clone + Allocator>
     ///
     /// ```
     /// # #[cfg(feature = "allocator-api2")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     /// # use iddqd_test_utils::bumpalo;
     ///
@@ -501,13 +501,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Clone + Allocator>
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -555,7 +555,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))] {
-    /// use iddqd::{BiHashMap, BiHashItem, bi_upcast};
+    /// use iddqd::{BiHashMap, BiHashItem, bi_upcast, Feed, ForLt};
     /// # use iddqd_test_utils::bumpalo;
     ///
     /// #[derive(Debug, PartialEq, Eq)]
@@ -566,13 +566,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -596,7 +596,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -606,13 +606,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -637,7 +637,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -647,13 +647,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -678,7 +678,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -688,13 +688,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -721,7 +721,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -731,13 +731,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -784,7 +784,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -793,12 +793,12 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -836,7 +836,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -845,12 +845,12 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -885,7 +885,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -894,12 +894,12 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -945,7 +945,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -954,12 +954,12 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -997,7 +997,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1007,13 +1007,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1044,7 +1044,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1054,13 +1054,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1158,7 +1158,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1168,13 +1168,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1223,7 +1223,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1233,13 +1233,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1284,7 +1284,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1294,13 +1294,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1335,7 +1335,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1345,13 +1345,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1434,7 +1434,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1444,13 +1444,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1480,7 +1480,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1490,13 +1490,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1538,7 +1538,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1548,13 +1548,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1587,7 +1587,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1597,13 +1597,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1633,7 +1633,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1643,13 +1643,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1679,7 +1679,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1689,13 +1689,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1729,7 +1729,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1739,13 +1739,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1791,7 +1791,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Item {
@@ -1801,13 +1801,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///     bi_upcast!();
@@ -1906,7 +1906,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+    /// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1916,13 +1916,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> BiHashMap<T, S, A> {
     /// }
     ///
     /// impl BiHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
     ///
@@ -2454,8 +2454,8 @@ struct KeyMap<'a, T: BiHashItem> {
 
 impl<'a, T: BiHashItem> fmt::Debug for KeyMap<'a, T>
 where
-    T::K1: ForLt<Of<'a>: fmt::Debug>,
-    T::K2: ForLt<Of<'a>: fmt::Debug>,
+    Feed<'a, T::K1>: fmt::Debug,
+    Feed<'a, T::K2>: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // We don't want to show key1 and key2 as a tuple since it's
@@ -2475,7 +2475,7 @@ where
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+/// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug, PartialEq, Eq)]
 /// struct Item {
@@ -2485,13 +2485,13 @@ where
 /// }
 ///
 /// impl BiHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
 ///     bi_upcast!();
@@ -2596,7 +2596,7 @@ fn detect_dup_or_insert<'a, A: Allocator>(
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+/// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug, PartialEq, Eq)]
 /// struct Item {
@@ -2606,13 +2606,13 @@ fn detect_dup_or_insert<'a, A: Allocator>(
 /// }
 ///
 /// impl BiHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
 ///     bi_upcast!();
@@ -2696,7 +2696,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+/// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug, PartialEq, Eq)]
 /// struct Item {
@@ -2706,13 +2706,13 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
 /// }
 ///
 /// impl BiHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
 ///     bi_upcast!();

@@ -1,6 +1,6 @@
 //! An example demonstrating `TriHashMap` use with complex borrowed keys.
 
-use iddqd::{Feed, ForLt, TriHashItem, TriHashMap, tri_upcast};
+use iddqd::{Equivalent, Feed, ForLt, TriHashItem, TriHashMap, tri_upcast};
 use std::path::{Path, PathBuf};
 
 /// These are the items we'll store in the `TriHashMap`.
@@ -14,14 +14,14 @@ struct MyStruct {
 
 /// The map will be indexed uniquely by (usize, &Path). Note that this is a
 /// borrowed key that can be constructed efficiently.
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Equivalent)]
 struct MyKey1<'a> {
     b: usize,
     c: &'a Path,
 }
 
 /// The map will also be indexed uniquely by (&Path, &[usize]).
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Equivalent)]
 struct MyKey2<'a> {
     c: &'a Path,
     d: &'a [usize],

@@ -27,8 +27,6 @@ use core::{
     hash::{Hash, Hasher},
 };
 use iddqd::{Comparable, Equivalent};
-#[cfg(test)]
-use proptest::prelude::*;
 use std::{
     io::Write,
     sync::{Mutex, OnceLock},

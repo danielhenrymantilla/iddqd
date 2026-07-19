@@ -1,8 +1,9 @@
-use iddqd::{
-    BiHashItem, IdHashItem, TriHashItem, bi_upcast, id_upcast, tri_upcast,
-};
 #[cfg(feature = "std")]
-use iddqd::{Feed, ForLt, IdOrdItem};
+use iddqd::IdOrdItem;
+use iddqd::{
+    BiHashItem, Feed, ForLt, IdHashItem, TriHashItem, bi_upcast, id_upcast,
+    tri_upcast,
+};
 use std::{borrow::Cow, path::Path};
 
 #[derive(Clone, Debug, PartialEq, Eq)]

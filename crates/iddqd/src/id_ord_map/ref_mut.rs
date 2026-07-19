@@ -46,14 +46,14 @@ use core::{
 /// [birthday problem]: https://en.wikipedia.org/wiki/Birthday_problem#Probability_table
 pub struct RefMut<'a, T: IdOrdItem>
 where
-    T::Key: ForLt<Of<'a>: Hash>,
+    Feed<'a, T::Key>: Hash,
 {
     inner: Option<RefMutInner<'a, T>>,
 }
 
 impl<'a, T: IdOrdItem> RefMut<'a, T>
 where
-    T::Key: ForLt<Of<'a>: Hash>,
+    Feed<'a, T::Key>: Hash,
 {
     pub(super) fn new(
         state: foldhash::fast::FixedState,
@@ -84,7 +84,7 @@ impl<'a, T: for<'k> IdOrdItemMut<'k>> RefMut<'a, T> {
 
 impl<'a, T: IdOrdItem> Drop for RefMut<'a, T>
 where
-    T::Key: ForLt<Of<'a>: Hash>,
+    Feed<'a, T::Key>: Hash,
 {
     fn drop(&mut self) {
         if let Some(inner) = self.inner.take() {
@@ -95,7 +95,7 @@ where
 
 impl<'a, T: IdOrdItem> Deref for RefMut<'a, T>
 where
-    T::Key: ForLt<Of<'a>: Hash>,
+    Feed<'a, T::Key>: Hash,
 {
     type Target = T;
 
@@ -106,7 +106,7 @@ where
 
 impl<'a, T: IdOrdItem> DerefMut for RefMut<'a, T>
 where
-    T::Key: ForLt<Of<'a>: Hash>,
+    Feed<'a, T::Key>: Hash,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.as_mut().unwrap().borrowed
@@ -115,7 +115,7 @@ where
 
 impl<'a, T: IdOrdItem + fmt::Debug> fmt::Debug for RefMut<'a, T>
 where
-    T::Key: ForLt<Of<'a>: Hash>,
+    Feed<'a, T::Key>: Hash,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.inner {
@@ -135,7 +135,7 @@ struct RefMutInner<'a, T: IdOrdItem> {
 
 impl<'a, T: IdOrdItem> RefMutInner<'a, T>
 where
-    T::Key: ForLt<Of<'a>: Hash>,
+    Feed<'a, T::Key>: Hash,
 {
     fn into_ref(self) -> &'a T {
         let key: Feed<'a, T::Key> = (*self.borrowed).key();

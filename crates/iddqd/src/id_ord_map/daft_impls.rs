@@ -38,7 +38,7 @@ impl<T: IdOrdItem> Diffable for IdOrdMap<T> {
 ///
 /// ```
 /// use daft::Diffable;
-/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
 ///
 /// #[derive(Eq, PartialEq, PartialOrd, Ord)]
 /// struct Item {
@@ -47,8 +47,8 @@ impl<T: IdOrdItem> Diffable for IdOrdMap<T> {
 /// }
 ///
 /// impl IdOrdItem for Item {
-///     type Key<'a> = &'a str;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = &'a str];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///     id_upcast!();
@@ -196,7 +196,7 @@ impl<T: IdOrdItem> IdOrdItem for IdLeaf<T> {
     where
         T: 'a;
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         let before_key = self.before().key();
         if before_key != self.after().key() {
             panic!("key is different between before and after");

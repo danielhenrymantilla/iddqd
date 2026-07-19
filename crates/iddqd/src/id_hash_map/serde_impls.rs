@@ -21,7 +21,7 @@ use serde_core::{
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+/// use iddqd::{IdHashItem, IdHashMap, id_upcast, Equivalent, Feed, ForLt};
 /// # use iddqd_test_utils::serde_json;
 /// use serde::{Deserialize, Serialize};
 ///
@@ -33,15 +33,15 @@ use serde_core::{
 /// }
 ///
 /// // This is a complex key, so it can't be a JSON map key.
-/// #[derive(Eq, Hash, PartialEq)]
+/// #[derive(Eq, Hash, PartialEq, Equivalent)]
 /// struct ComplexKey<'a> {
 ///     id: u32,
 ///     email: &'a str,
 /// }
 ///
 /// impl IdHashItem for Item {
-///     type Key<'a> = ComplexKey<'a>;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = ComplexKey<'a>];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         ComplexKey { id: self.id, email: &self.email }
 ///     }
 ///     id_upcast!();
@@ -241,7 +241,7 @@ where
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
 /// use iddqd::{
-///     IdHashItem, IdHashMap, id_hash_map::IdHashMapAsMap, id_upcast,
+///     IdHashItem, IdHashMap, id_hash_map::IdHashMapAsMap, id_upcast, Feed, ForLt,
 /// };
 /// use serde::{Deserialize, Serialize};
 ///
@@ -252,8 +252,8 @@ where
 /// }
 ///
 /// impl IdHashItem for Item {
-///     type Key<'a> = u32;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = u32];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         self.id
 ///     }
 ///     id_upcast!();

@@ -55,7 +55,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Clone + Allocator> Diffable
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
 /// use daft::Diffable;
-/// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+/// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
 ///
 /// #[derive(Eq, PartialEq)]
 /// struct Item {
@@ -64,8 +64,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Clone + Allocator> Diffable
 /// }
 ///
 /// impl IdHashItem for Item {
-///     type Key<'a> = &'a str;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = &'a str];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///     id_upcast!();
@@ -256,7 +256,7 @@ impl<T: IdHashItem> IdHashItem for IdLeaf<T> {
     where
         T: 'a;
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         let before_key = self.before().key();
         if before_key != self.after().key() {
             panic!("key is different between before and after");

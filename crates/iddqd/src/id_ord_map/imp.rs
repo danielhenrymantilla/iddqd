@@ -29,7 +29,7 @@ use equivalent::{Comparable, Equivalent};
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
 ///
 /// // Define a struct with a key.
 /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -41,9 +41,9 @@ use equivalent::{Comparable, Equivalent};
 /// // Implement IdOrdItem for the struct.
 /// impl IdOrdItem for MyItem {
 ///     // Keys can borrow from the item.
-///     type Key<'a> = &'a str;
+///     type Key = ForLt![<'a> = &'a str];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///
@@ -83,7 +83,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -92,9 +92,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -117,7 +117,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -126,9 +126,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -151,7 +151,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -160,9 +160,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -185,7 +185,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -194,9 +194,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -251,7 +251,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -260,9 +260,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -285,7 +285,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -294,9 +294,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -320,7 +320,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -329,9 +329,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -376,7 +376,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -385,8 +385,8 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -411,7 +411,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -420,8 +420,8 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -468,7 +468,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -477,8 +477,8 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -509,7 +509,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -518,9 +518,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -557,7 +557,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -566,9 +566,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -593,7 +593,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     #[inline]
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T>
     where
-        for<'b> T::Key: ForLt<Of<'b>: Hash>,
+        for<'b> Feed<'b, T::Key>: Hash,
     {
         IterMut::new(&mut self.items, &self.tables)
     }
@@ -671,7 +671,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -680,9 +680,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -718,7 +718,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -727,9 +727,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -773,7 +773,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -782,9 +782,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -809,7 +809,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -818,9 +818,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -845,7 +845,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -854,9 +854,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -889,7 +889,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -898,9 +898,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -934,7 +934,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_ord_map, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_ord_map, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -943,9 +943,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1012,7 +1012,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1021,9 +1021,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1055,7 +1055,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1064,9 +1064,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1096,7 +1096,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1105,9 +1105,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1144,7 +1144,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1153,9 +1153,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1187,7 +1187,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1196,9 +1196,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1228,7 +1228,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1237,9 +1237,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1278,7 +1278,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1287,9 +1287,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1613,7 +1613,7 @@ impl<T: IdOrdItem> IntoIterator for IdOrdMap<T> {
 /// # Examples
 ///
 /// ```
-/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 /// struct Item {
@@ -1622,9 +1622,9 @@ impl<T: IdOrdItem> IntoIterator for IdOrdMap<T> {
 /// }
 ///
 /// impl IdOrdItem for Item {
-///     type Key<'a> = &'a str;
+///     type Key = ForLt![<'a> = &'a str];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///

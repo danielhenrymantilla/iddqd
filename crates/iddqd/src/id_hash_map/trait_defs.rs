@@ -9,7 +9,7 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc};
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+/// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
 ///
 /// // Define a struct with a key.
 /// #[derive(Debug, PartialEq, Eq, Hash)]
@@ -21,9 +21,9 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc};
 /// // Implement IdHashItem for the struct.
 /// impl IdHashItem for MyItem {
 ///     // Keys can borrow from the item.
-///     type Key<'a> = &'a str;
+///     type Key = ForLt![<'a> = &'a str];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///

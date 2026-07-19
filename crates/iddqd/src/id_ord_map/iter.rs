@@ -1,6 +1,6 @@
 use super::{IdOrdItem, RefMut, tables::IdOrdMapTables};
 use crate::{
-    ForLt,
+    Feed, ForLt,
     support::{
         alloc::Global,
         btree_table,
@@ -61,7 +61,7 @@ impl<T: IdOrdItem> FusedIterator for Iter<'_, T> {}
 #[derive(Debug)]
 pub struct IterMut<'a, T: IdOrdItem>
 where
-    T::Key: ForLt<Of<'a>: Hash>,
+    Feed<'a, T::Key>: Hash,
 {
     items: ItemSlotsPtr<'a, T>,
     tables: &'a IdOrdMapTables,

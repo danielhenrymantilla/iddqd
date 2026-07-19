@@ -10,7 +10,7 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc};
 /// # Examples
 ///
 /// ```
-/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
 ///
 /// // Define a struct with a key.
 /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -22,9 +22,9 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc};
 /// // Implement IdOrdItem for the struct.
 /// impl IdOrdItem for MyItem {
 ///     // Keys can borrow from the item.
-///     type Key<'a> = &'a str;
+///     type Key = ForLt![<'a> = &'a str];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///

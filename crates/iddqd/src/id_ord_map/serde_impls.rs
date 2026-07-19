@@ -16,7 +16,7 @@ use serde_core::{
 /// # Examples
 ///
 /// ```
-/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Comparable, Equivalent, Feed, ForLt};
 /// # use iddqd_test_utils::serde_json;
 /// use serde::{Deserialize, Serialize};
 ///
@@ -28,15 +28,15 @@ use serde_core::{
 /// }
 ///
 /// // This is a complex key, so it can't be a JSON map key.
-/// #[derive(Eq, PartialEq, PartialOrd, Ord)]
+/// #[derive(Eq, PartialEq, PartialOrd, Ord, Comparable, Equivalent)]
 /// struct ComplexKey<'a> {
 ///     id: u32,
 ///     email: &'a str,
 /// }
 ///
 /// impl IdOrdItem for Item {
-///     type Key<'a> = ComplexKey<'a>;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = ComplexKey<'a>];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         ComplexKey { id: self.id, email: &self.email }
 ///     }
 ///     id_upcast!();
@@ -151,7 +151,7 @@ where
 /// Use with serde's `with` attribute:
 ///
 /// ```
-/// use iddqd::{IdOrdItem, IdOrdMap, id_ord_map::IdOrdMapAsMap, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_ord_map::IdOrdMapAsMap, id_upcast, Feed, ForLt};
 /// use serde::{Deserialize, Serialize};
 ///
 /// #[derive(Debug, Serialize, Deserialize)]
@@ -161,8 +161,8 @@ where
 /// }
 ///
 /// impl IdOrdItem for Item {
-///     type Key<'a> = u32;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = u32];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         self.id
 ///     }
 ///     id_upcast!();

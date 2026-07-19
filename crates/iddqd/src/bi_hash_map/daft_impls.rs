@@ -45,7 +45,7 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> Diffable
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
 /// use daft::Diffable;
-/// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+/// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Feed, ForLt};
 ///
 /// #[derive(Eq, PartialEq)]
 /// struct Item {
@@ -55,14 +55,14 @@ impl<T: BiHashItem, S: Clone + BuildHasher, A: Allocator> Diffable
 /// }
 ///
 /// impl BiHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
 ///
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
 ///
@@ -415,7 +415,7 @@ impl<T: BiHashItem> BiHashItem for IdLeaf<T> {
     where
         T: 'a;
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         let before_key = self.before().key1();
         if before_key != self.after().key1() {
             panic!("key is different between before and after");
@@ -423,7 +423,7 @@ impl<T: BiHashItem> BiHashItem for IdLeaf<T> {
         before_key
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         let before_key = self.before().key2();
         if before_key != self.after().key2() {
             panic!("key is different between before and after");
@@ -472,7 +472,7 @@ impl<T: BiHashItem> IdHashItem for ByK1<T> {
         T: 'a;
 
     #[inline]
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.0.key1()
     }
 
@@ -510,7 +510,7 @@ impl<T: BiHashItem> IdHashItem for ByK2<T> {
         T: 'a;
 
     #[inline]
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.0.key2()
     }
 

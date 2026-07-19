@@ -21,7 +21,7 @@ use serde_core::{
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{BiHashItem, BiHashMap, bi_upcast};
+/// use iddqd::{BiHashItem, BiHashMap, bi_upcast, Equivalent, Feed, ForLt};
 /// # use iddqd_test_utils::serde_json;
 /// use serde::{Deserialize, Serialize};
 ///
@@ -34,19 +34,19 @@ use serde_core::{
 /// }
 ///
 /// // This is a complex key, so it can't be a JSON map key.
-/// #[derive(Eq, Hash, PartialEq)]
+/// #[derive(Eq, Hash, PartialEq, Equivalent)]
 /// struct ComplexKey<'a> {
 ///     name: &'a str,
 ///     email: &'a str,
 /// }
 ///
 /// impl BiHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = ComplexKey<'a>;
-///     fn key1(&self) -> Self::K1<'_> {
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = ComplexKey<'a>];
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         ComplexKey { name: &self.name, email: &self.email }
 ///     }
 ///     bi_upcast!();
@@ -239,7 +239,7 @@ where
 /// Marker type for [`BiHashMap`] serialized as a map, for use with serde's
 /// `with` attribute.
 ///
-/// The key type [`Self::K1`](BiHashItem::K1) is used as the map key.
+/// The key type [`Feed<'_, Self::K1BiHashItem::K1) is used as the map key.
 ///
 /// # Examples
 ///
@@ -248,7 +248,7 @@ where
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
 /// use iddqd::{
-///     BiHashItem, BiHashMap, bi_hash_map::BiHashMapAsMap, bi_upcast,
+///     BiHashItem, BiHashMap, bi_hash_map::BiHashMapAsMap, bi_upcast, Feed, ForLt
 /// };
 /// use serde::{Deserialize, Serialize};
 ///
@@ -259,12 +259,12 @@ where
 /// }
 ///
 /// impl BiHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
-///     fn key1(&self) -> Self::K1<'_> {
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
 ///     bi_upcast!();

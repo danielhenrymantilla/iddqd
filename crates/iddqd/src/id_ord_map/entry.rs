@@ -1,5 +1,5 @@
 use super::{IdOrdItem, IdOrdMap, RefMut};
-use crate::{ForLt, support::ItemIndex};
+use crate::{Feed, ForLt, support::ItemIndex};
 use core::{fmt, hash::Hash};
 
 /// An implementation of the Entry API for [`IdOrdMap`].
@@ -51,7 +51,7 @@ impl<'a, T: IdOrdItem> Entry<'a, T> {
     #[inline]
     pub fn or_insert(self, default: T) -> RefMut<'a, T>
     where
-        for<'b> T::Key: ForLt<Of<'b>: Hash>,
+        for<'b> Feed<'b, T::Key>: Hash,
     {
         match self {
             Entry::Occupied(entry) => entry.into_mut(),
@@ -88,7 +88,7 @@ impl<'a, T: IdOrdItem> Entry<'a, T> {
     #[inline]
     pub fn or_insert_with<F: FnOnce() -> T>(self, default: F) -> RefMut<'a, T>
     where
-        for<'b> T::Key: ForLt<Of<'b>: Hash>,
+        for<'b> Feed<'b, T::Key>: Hash,
     {
         match self {
             Entry::Occupied(entry) => entry.into_mut(),
@@ -102,7 +102,7 @@ impl<'a, T: IdOrdItem> Entry<'a, T> {
     pub fn and_modify<F>(self, f: F) -> Self
     where
         F: FnOnce(RefMut<'_, T>),
-        for<'b> T::Key: ForLt<Of<'b>: Hash>,
+        for<'b> Feed<'b, T::Key>: Hash,
     {
         match self {
             Entry::Occupied(mut entry) => {

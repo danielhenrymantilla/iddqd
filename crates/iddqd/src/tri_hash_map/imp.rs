@@ -1,6 +1,6 @@
 use super::{IntoIter, Iter, IterMut, RefMut, tables::TriHashMapTables};
 use crate::{
-    DefaultHashBuilder, Feed, ForLt, TriHashItem,
+    DefaultHashBuilder, Feed, TriHashItem,
     errors::{DuplicateItem, TryReserveError},
     internal::ValidationError,
     support::{
@@ -77,7 +77,7 @@ impl PreparedInsertOverwrite {
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+/// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug, PartialEq, Eq)]
 /// struct Person {
@@ -89,19 +89,19 @@ impl PreparedInsertOverwrite {
 ///
 /// // Implement TriHashItem to define the three key types.
 /// impl TriHashItem for Person {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
-///     type K3<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
+///     type K3 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
 ///
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.email
 ///     }
 ///
-///     fn key3(&self) -> Self::K3<'_> {
+///     fn key3(&self) -> Feed<'_, Self::K3> {
 ///         &self.phone
 ///     }
 ///
@@ -157,7 +157,7 @@ impl<T: TriHashItem> TriHashMap<T> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -168,17 +168,17 @@ impl<T: TriHashItem> TriHashMap<T> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -200,7 +200,7 @@ impl<T: TriHashItem> TriHashMap<T> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -211,17 +211,17 @@ impl<T: TriHashItem> TriHashMap<T> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -250,7 +250,7 @@ impl<T: TriHashItem, S: BuildHasher> TriHashMap<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     ///
     /// #[derive(Debug, PartialEq, Eq)]
@@ -262,17 +262,17 @@ impl<T: TriHashItem, S: BuildHasher> TriHashMap<T, S> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -294,7 +294,7 @@ impl<T: TriHashItem, S: BuildHasher> TriHashMap<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     ///
     /// #[derive(Debug, PartialEq, Eq)]
@@ -306,17 +306,17 @@ impl<T: TriHashItem, S: BuildHasher> TriHashMap<T, S> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -353,7 +353,7 @@ impl<T: TriHashItem, A: Clone + Allocator>
     ///
     /// ```
     /// # #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))] {
-    /// use iddqd::{TriHashMap, TriHashItem, tri_upcast};
+    /// use iddqd::{TriHashMap, TriHashItem, tri_upcast, Feed, ForLt};
     /// # use iddqd_test_utils::bumpalo;
     ///
     /// #[derive(Debug, PartialEq, Eq)]
@@ -365,17 +365,17 @@ impl<T: TriHashItem, A: Clone + Allocator>
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -410,7 +410,7 @@ impl<T: TriHashItem, A: Clone + Allocator>
     ///
     /// ```
     /// # #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))] {
-    /// use iddqd::{TriHashMap, TriHashItem, tri_upcast};
+    /// use iddqd::{TriHashMap, TriHashItem, tri_upcast, Feed, ForLt};
     /// # use iddqd_test_utils::bumpalo;
     ///
     /// #[derive(Debug, PartialEq, Eq)]
@@ -422,17 +422,17 @@ impl<T: TriHashItem, A: Clone + Allocator>
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -471,7 +471,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Clone + Allocator>
     ///
     /// ```
     /// # #[cfg(feature = "allocator-api2")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     /// # use iddqd_test_utils::bumpalo;
     ///
@@ -484,17 +484,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Clone + Allocator>
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -531,7 +531,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Clone + Allocator>
     ///
     /// ```
     /// # #[cfg(feature = "allocator-api2")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     /// # use iddqd_test_utils::bumpalo;
     ///
@@ -544,17 +544,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Clone + Allocator>
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -602,7 +602,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))] {
-    /// use iddqd::{TriHashMap, TriHashItem, tri_upcast};
+    /// use iddqd::{TriHashMap, TriHashItem, tri_upcast, Feed, ForLt};
     /// # use iddqd_test_utils::bumpalo;
     ///
     /// #[derive(Debug, PartialEq, Eq)]
@@ -614,17 +614,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -649,7 +649,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -660,17 +660,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -692,7 +692,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -703,17 +703,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -743,7 +743,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -754,17 +754,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -801,7 +801,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -812,17 +812,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -873,7 +873,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -883,16 +883,16 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.email
     ///     }
     ///     tri_upcast!();
@@ -931,7 +931,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -941,16 +941,16 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.email
     ///     }
     ///     tri_upcast!();
@@ -989,7 +989,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -999,16 +999,16 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.email
     ///     }
     ///     tri_upcast!();
@@ -1066,7 +1066,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1076,16 +1076,16 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.email
     ///     }
     ///     tri_upcast!();
@@ -1134,7 +1134,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -1145,17 +1145,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -1201,7 +1201,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -1212,17 +1212,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -1329,7 +1329,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -1340,17 +1340,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -1401,7 +1401,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -1412,17 +1412,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -1544,7 +1544,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -1555,17 +1555,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -1612,7 +1612,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -1623,17 +1623,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -1686,7 +1686,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -1697,17 +1697,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -1762,7 +1762,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -1773,17 +1773,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -1836,7 +1836,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -1847,17 +1847,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -1889,7 +1889,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -1900,17 +1900,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -1942,7 +1942,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -1953,17 +1953,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -2002,7 +2002,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -2013,17 +2013,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -2058,7 +2058,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -2069,17 +2069,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -2111,7 +2111,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -2122,17 +2122,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -2164,7 +2164,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -2175,17 +2175,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -2224,7 +2224,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -2235,17 +2235,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -2280,7 +2280,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -2291,17 +2291,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -2333,7 +2333,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -2344,17 +2344,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -2386,7 +2386,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -2397,17 +2397,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -2446,7 +2446,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Person {
@@ -2457,17 +2457,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Person {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.email
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.phone
     ///     }
     ///     tri_upcast!();
@@ -2514,7 +2514,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+    /// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -2525,17 +2525,17 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
     /// }
     ///
     /// impl TriHashItem for Item {
-    ///     type K1<'a> = u32;
-    ///     type K2<'a> = &'a str;
-    ///     type K3<'a> = &'a str;
+    ///     type K1 = ForLt![<'a> = u32];
+    ///     type K2 = ForLt![<'a> = &'a str];
+    ///     type K3 = ForLt![<'a> = &'a str];
     ///
-    ///     fn key1(&self) -> Self::K1<'_> {
+    ///     fn key1(&self) -> Feed<'_, Self::K1> {
     ///         self.id
     ///     }
-    ///     fn key2(&self) -> Self::K2<'_> {
+    ///     fn key2(&self) -> Feed<'_, Self::K2> {
     ///         &self.name
     ///     }
-    ///     fn key3(&self) -> Self::K3<'_> {
+    ///     fn key3(&self) -> Feed<'_, Self::K3> {
     ///         &self.code
     ///     }
     ///
@@ -2897,9 +2897,9 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> TriHashMap<T, S, A> {
 impl<'a, T, S, A: Allocator> fmt::Debug for TriHashMap<T, S, A>
 where
     T: TriHashItem + fmt::Debug,
-    T::K1: ForLt<Of<'a>: fmt::Debug>,
-    T::K2: ForLt<Of<'a>: fmt::Debug>,
-    T::K3: ForLt<Of<'a>: fmt::Debug>,
+    Feed<'a, T::K1>: fmt::Debug,
+    Feed<'a, T::K2>: fmt::Debug,
+    Feed<'a, T::K3>: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut map = f.debug_map();
@@ -2938,9 +2938,9 @@ struct KeyMap<'a, T: TriHashItem> {
 
 impl<'a, T: TriHashItem> fmt::Debug for KeyMap<'a, T>
 where
-    T::K1: ForLt<Of<'a>: fmt::Debug>,
-    T::K2: ForLt<Of<'a>: fmt::Debug>,
-    T::K3: ForLt<Of<'a>: fmt::Debug>,
+    Feed<'a, T::K1>: fmt::Debug,
+    Feed<'a, T::K2>: fmt::Debug,
+    Feed<'a, T::K3>: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // We don't want to show key1 and key2 as a tuple since it's
@@ -3096,7 +3096,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+/// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug, PartialEq, Eq)]
 /// struct Item {
@@ -3106,16 +3106,16 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
 /// }
 ///
 /// impl TriHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
-///     type K3<'a> = &'a str;
-///     fn key1(&self) -> Self::K1<'_> {
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
+///     type K3 = ForLt![<'a> = &'a str];
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
-///     fn key3(&self) -> Self::K3<'_> {
+///     fn key3(&self) -> Feed<'_, Self::K3> {
 ///         &self.email
 ///     }
 ///     tri_upcast!();

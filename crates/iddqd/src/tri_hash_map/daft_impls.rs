@@ -46,7 +46,7 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> Diffable
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
 /// use daft::Diffable;
-/// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+/// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
 ///
 /// #[derive(Eq, PartialEq)]
 /// struct Item {
@@ -57,19 +57,19 @@ impl<T: TriHashItem, S: Clone + BuildHasher, A: Allocator> Diffable
 /// }
 ///
 /// impl TriHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
-///     type K3<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
+///     type K3 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
 ///
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
 ///
-///     fn key3(&self) -> Self::K3<'_> {
+///     fn key3(&self) -> Feed<'_, Self::K3> {
 ///         &self.email
 ///     }
 ///
@@ -518,7 +518,7 @@ impl<T: TriHashItem> TriHashItem for IdLeaf<T> {
     where
         T: 'a;
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         let before_key = self.before().key1();
         if before_key != self.after().key1() {
             panic!("key1 is different between before and after");
@@ -526,7 +526,7 @@ impl<T: TriHashItem> TriHashItem for IdLeaf<T> {
         before_key
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         let before_key = self.before().key2();
         if before_key != self.after().key2() {
             panic!("key2 is different between before and after");
@@ -534,7 +534,7 @@ impl<T: TriHashItem> TriHashItem for IdLeaf<T> {
         before_key
     }
 
-    fn key3(&self) -> Self::K3<'_> {
+    fn key3(&self) -> Feed<'_, Self::K3> {
         let before_key = self.before().key3();
         if before_key != self.after().key3() {
             panic!("key3 is different between before and after");
@@ -590,7 +590,7 @@ impl<T: TriHashItem> IdHashItem for ByK1<T> {
         T: 'a;
 
     #[inline]
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.0.key1()
     }
 
@@ -628,7 +628,7 @@ impl<T: TriHashItem> IdHashItem for ByK2<T> {
         T: 'a;
 
     #[inline]
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.0.key2()
     }
 
@@ -666,7 +666,7 @@ impl<T: TriHashItem> IdHashItem for ByK3<T> {
         T: 'a;
 
     #[inline]
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.0.key3()
     }
 

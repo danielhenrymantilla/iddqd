@@ -701,6 +701,8 @@ impl PartialOrd for Index {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
+    use iddqd_derive::Equivalent;
+
     use super::*;
     use crate::support::{alloc::Global, item_set::ItemSet};
     use core::cell::Cell;
@@ -716,7 +718,7 @@ mod tests {
     }
 
     /// A key type whose `Ord` impl can be made to panic on demand.
-    #[derive(Clone, Debug, PartialEq, Eq)]
+    #[derive(Clone, Debug, PartialEq, Eq, Equivalent, Comparable)]
     struct PanickingKey(u32);
 
     impl PartialOrd for PanickingKey {
@@ -736,7 +738,7 @@ mod tests {
 
     /// A key type whose `Ord` impl can be told to return a fixed ordering on
     /// every call, to simulate adversarial user comparators.
-    #[derive(Clone, Debug, PartialEq, Eq)]
+    #[derive(Clone, Debug, PartialEq, Eq, Equivalent, Comparable)]
     struct LyingKey(u32);
 
     impl PartialOrd for LyingKey {

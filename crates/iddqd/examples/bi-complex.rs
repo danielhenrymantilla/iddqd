@@ -1,7 +1,8 @@
 //! An example demonstrating `BiHashMap` use with complex borrowed keys.
 
 use iddqd::{
-    BiHashItem, BiHashMap, Feed, ForLt, bi_hash_map::Entry, bi_upcast,
+    BiHashItem, BiHashMap, Equivalent, Feed, ForLt, bi_hash_map::Entry,
+    bi_upcast,
 };
 use std::path::{Path, PathBuf};
 
@@ -16,14 +17,14 @@ struct MyStruct {
 
 /// The map will be indexed uniquely by (b, c). Note that this is a
 /// borrowed key that can be constructed efficiently.
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Equivalent)]
 struct MyKey1<'a> {
     b: usize,
     c: &'a Path,
 }
 
 /// The map will also be indexed uniquely by (&Path, &[usize]).
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Equivalent)]
 struct MyKey2<'a> {
     c: &'a Path,
     d: &'a [usize],
