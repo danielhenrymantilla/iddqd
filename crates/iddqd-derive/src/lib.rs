@@ -117,6 +117,7 @@ fn equivalent_inner(input: TokenStream2) -> Result<TokenStream2> {
         &quote! {
             -> ::core::primitive::bool
         },
+        WhichOne::Equivalent,
         |each_method| {
             quote!(
                 true #(&&
@@ -145,6 +146,11 @@ pub fn comparable(input: TokenStream) -> TokenStream {
         .into()
 }
 
+enum WhichOne {
+    Equivalent,
+    Comparable,
+}
+
 fn comparable_inner(input: TokenStream2) -> Result<TokenStream2> {
     common(
         input,
@@ -157,6 +163,7 @@ fn comparable_inner(input: TokenStream2) -> Result<TokenStream2> {
         &quote! {
             -> ::core::cmp::Ordering
         },
+        WhichOne::Comparable,
         |each_method| {
             quote!(
                 ::core::cmp::Ordering::Equal #(
@@ -171,6 +178,7 @@ fn common(
     Trait @ _: &TokenStream2,
     method @ _: &Ident,
     ret: &TokenStream2,
+    which: WhichOne,
     mut fold_field_outputs: impl FnMut(
         &mut dyn Iterator<Item = TokenStream2>,
     ) -> TokenStream2,
@@ -297,8 +305,126 @@ fn common(
                 }
             ))
         }
-        Data::Enum(_data_enum) => {
-            todo!("`enum` support for `#[derive(Equivalent / Comparable]`")
+        Data::Enum(data_enum) => {
+            // Note: perfect derives for enums are way less problematic as the fields are all `pub`
+            // anyways.
+            if PERFECT_DERIVES {
+                generics_both.make_where_clause().predicates.extend(
+                    data_enum.variants.iter().flat_map(|v| {
+                        v.fields
+                            .iter()
+                            .map(|f| -> WherePredicate {
+                                let ty = &f.ty;
+                                let mut ty2: Type = ty.clone();
+                                mangler.visit_type_mut(&mut ty2);
+                                parse_quote_spanned!(ty.span()=>
+                                    #ty : #Trait < #ty2 >
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                    }),
+                );
+            }
+
+            let (intro_both, _, where_clauses) = generics_both.split_for_impl();
+            let fwd_lhs = generics.split_for_impl().1;
+            let fwd_rhs = generics_mangled.split_for_impl().1;
+            fn field_names_of_variant(
+                v: &Variant,
+            ) -> impl Iterator<Item = (Ident, Ident)> {
+                v.fields.members().map(|each_field_name: Member| {
+                    match each_field_name {
+                        Member::Named(ref ident) => (
+                            format_ident!("lhs_{ident}"),
+                            format_ident!("rhs_{ident}"),
+                        ),
+                        Member::Unnamed(Index { index, span }) => (
+                            format_ident!("lhs_{index}", span = span),
+                            format_ident!("rhs_{index}", span = span),
+                        ),
+                    }
+                })
+            }
+            fn each_method(
+                Trait @ _: &TokenStream2,
+                method: &Ident,
+                v: &Variant,
+            ) -> impl Iterator<Item = TokenStream2> {
+                field_names_of_variant(v).map(move |(lhs_field, rhs_field)| {
+                    quote! {
+                        #Trait::#method(
+                            #lhs_field,
+                            #rhs_field,
+                        )
+                    }
+                })
+            }
+            let kleene = &quote!();
+            let if_equivalent = if matches!(which, WhichOne::Equivalent) {
+                &[kleene][..]
+            } else {
+                &[]
+            };
+            let enum_arms = (0..).zip(&data_enum.variants).map(|(i, v)| {
+                let (each_field_name_lhs, each_field_name_rhs) =
+                    field_names_of_variant(v).collect::<(Vec<_>, Vec<_>)>();
+                let each_field_name = v.fields.members();
+                let each_field_name_clone = each_field_name.clone();
+                let fn_body =
+                    fold_field_outputs(&mut each_method(Trait, method, v));
+                let VariantName @ _ = &v.ident;
+                let if_comparable_fallback =
+                    matches!(which, WhichOne::Comparable).then(|| {
+                        let EachSubVariant @ _ =
+                            data_enum.variants.iter().take(i).map(|v| &v.ident);
+                        quote!(
+                            #(
+                                (
+                                    #Type::#EachSubVariant { .. },
+                                    #Type::#VariantName { .. },
+                                ) => ::core::cmp::Ordering::Less,
+                                (
+                                    #Type::#VariantName { .. },
+                                    #Type::#EachSubVariant { .. },
+                                ) => ::core::cmp::Ordering::Greater,
+                            )*
+                        )
+                    });
+                quote!(
+                    (
+                        #Type::#VariantName {
+                            #(
+                                #each_field_name: #each_field_name_lhs,
+                            )*
+                        },
+                        #Type::#VariantName {
+                            #(
+                                #each_field_name_clone: #each_field_name_rhs,
+                            )*
+                        },
+                    ) => #fn_body,
+
+                    #if_comparable_fallback
+                )
+            });
+            Ok(quote!(
+                impl #intro_both
+                    #Trait< #Type #fwd_rhs >
+                for
+                    #Type #fwd_lhs
+                #where_clauses
+                {
+                    fn #method(&self, key: & #Type #fwd_rhs) #ret {
+                        match (self, key) {
+                            #(#enum_arms)*
+
+                            #(#if_equivalent
+                                _ => false,
+                            )*
+                        }
+                    }
+                }
+            ))
         }
     }
 }
