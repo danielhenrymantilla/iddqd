@@ -20,6 +20,8 @@ macro_rules! bail {(
     return Err(Error::new_spanned(&$spanned, $error))
 )}
 
+mod mangling;
+
 #[proc_macro_derive(Equivalent)]
 pub fn equivalent(input: TokenStream) -> TokenStream {
     equivalent_inner(input.into())
@@ -38,94 +40,8 @@ pub fn equivalent(input: TokenStream) -> TokenStream {
         .into()
 }
 
-struct Mangler {
-    lifetimes: Vec<String>,
-    type_params: Vec<String>,
-}
-
-fn generics_mangler(g: &Generics) -> (Mangler, Generics) {
-    fn mangle_ident(ident: &Ident) -> Ident {
-        format_ident!("__{ident}2")
-    }
-
-    use ::syn::visit_mut as subrecursing;
-
-    #[expect(non_local_definitions)]
-    impl VisitMut for Mangler {
-        fn visit_lifetime_mut(&mut self, lt: &mut Lifetime) {
-            if self.lifetimes.contains(&lt.ident.to_string()) {
-                lt.ident = mangle_ident(&lt.ident);
-            }
-        }
-
-        fn visit_type_param_mut(&mut self, tp: &mut syn::TypeParam) {
-            subrecursing::visit_type_param_mut(self, tp);
-            let ident = &tp.ident;
-            if self.type_params.contains(&ident.to_string()) {
-                tp.ident = mangle_ident(ident);
-            }
-        }
-
-        fn visit_type_path_mut(&mut self, ty: &mut TypePath) {
-            subrecursing::visit_type_path_mut(self, ty);
-            match (&ty.qself, ty.path.get_ident()) {
-                (None, Some(ident))
-                    if self.type_params.contains(&ident.to_string()) =>
-                {
-                    let ident = mangle_ident(ident);
-                    ty.path = parse_quote! { #ident };
-                }
-                _ => {}
-            }
-        }
-    }
-
-    let mut mangler = Mangler {
-        lifetimes: g
-            .lifetimes()
-            .map(|lt| lt.lifetime.ident.to_string())
-            .collect(),
-        type_params: g.type_params().map(|tp| tp.ident.to_string()).collect(),
-    };
-    let mut ret = g.clone();
-    mangler.visit_generics_mut(&mut ret);
-    (mangler, ret)
-}
-
-#[cfg(false)]
-const REMINDER: &str = stringify! {
-    pub trait Equivalent<K: ?Sized> {
-        /// Compare self to `key` and return `true` if they are equal.
-        fn equivalent(&self, key: &K) -> bool;
-    }
-
-    pub trait Comparable<K: ?Sized>: Equivalent<K> {
-        /// Compare self to `key` and return their ordering.
-        fn compare(&self, key: &K) -> Ordering;
-    }
-};
-
 fn equivalent_inner(input: TokenStream2) -> Result<TokenStream2> {
-    common(
-        input,
-        &quote! {
-            ::iddqd::Equivalent
-        },
-        &format_ident! {
-            "equivalent"
-        },
-        &quote! {
-            -> ::core::primitive::bool
-        },
-        WhichOne::Equivalent,
-        |each_method| {
-            quote!(
-                true #(&&
-                    #each_method
-                )*
-            )
-        },
-    )
+    handle_derive(WhichDerive::Equivalent, input)
 }
 
 #[proc_macro_derive(Comparable)]
@@ -146,47 +62,78 @@ pub fn comparable(input: TokenStream) -> TokenStream {
         .into()
 }
 
-enum WhichOne {
+fn comparable_inner(input: TokenStream2) -> Result<TokenStream2> {
+    handle_derive(WhichDerive::Comparable, input)
+}
+
+enum WhichDerive {
     Equivalent,
     Comparable,
 }
 
-fn comparable_inner(input: TokenStream2) -> Result<TokenStream2> {
-    common(
-        input,
-        &quote! {
-            ::iddqd::Comparable
-        },
-        &format_ident! {
-            "compare"
-        },
-        &quote! {
-            -> ::core::cmp::Ordering
-        },
-        WhichOne::Comparable,
-        |each_method| {
-            quote!(
-                ::core::cmp::Ordering::Equal #(
-                    .then_with(|| #each_method) )*
-            )
-        },
-    )
-}
+#[cfg(false)]
+const REMINDER: &str = stringify! {
+    pub trait Equivalent<K: ?Sized> {
+        /// Compare self to `key` and return `true` if they are equal.
+        fn equivalent(&self, key: &K) -> bool;
+    }
 
-fn common(
+    pub trait Comparable<K: ?Sized>: Equivalent<K> {
+        /// Compare self to `key` and return their ordering.
+        fn compare(&self, key: &K) -> Ordering;
+    }
+};
+
+fn handle_derive(
+    which_derive: WhichDerive,
     input: TokenStream2,
-    Trait @ _: &TokenStream2,
-    method @ _: &Ident,
-    ret: &TokenStream2,
-    which: WhichOne,
-    mut fold_field_outputs: impl FnMut(
-        &mut dyn Iterator<Item = TokenStream2>,
-    ) -> TokenStream2,
 ) -> Result<TokenStream2> {
+    #[allow(clippy::type_complexity)] // Clippy skill issue.
+    let (Trait @ _, method, ret, fold_field_outputs): (
+        &TokenStream2,
+        &TokenStream2,
+        &TokenStream2,
+        &mut dyn FnMut(&mut dyn Iterator<Item = _>) -> TokenStream2,
+    ) = match which_derive {
+        WhichDerive::Equivalent => (
+            &quote! {
+                ::iddqd::Equivalent
+            },
+            &quote! {
+                equivalent
+            },
+            &quote! {
+                -> ::core::primitive::bool
+            },
+            &mut |each_method: &mut dyn Iterator<Item = TokenStream2>| {
+                quote! {
+                    true #( && #each_method )*
+                }
+            },
+        ),
+        WhichDerive::Comparable => (
+            &quote! {
+                ::iddqd::Comparable
+            },
+            &quote! {
+                compare
+            },
+            &quote! {
+                -> ::core::cmp::Ordering
+            },
+            &mut |each_method: &mut dyn Iterator<Item = TokenStream2>| {
+                quote! {
+                    ::core::cmp::Ordering::Equal #(
+                        .then_with(|| #each_method) )*
+                }
+            },
+        ),
+    };
     let input @ DeriveInput { ident: Type @ _, generics, .. }: &DeriveInput =
         &parse2(input)?;
 
-    let (mangler, generics_mangled) = &mut generics_mangler(generics);
+    let (generics_mangled, mangling_visitor) =
+        &mut mangling::mangled_generics(generics);
 
     let mut generics_both: Generics = generics.clone();
     for lt in generics_mangled.lifetimes() {
@@ -211,26 +158,24 @@ fn common(
     /// struct Example<T>(*const T);
     /// ```
     ///
-    ///   - Do we bound on the generics? For instance:
+    ///   - Do we bound on the generics? (This is what the stdlib does.) For instance:
     ///
     ///     ```rs
-    ///     impl<T, U> Equivalent<Example<U>> for for Example<T>
+    ///     impl<T, U> Equivalent<Example<U>> for Example<T>
     ///     where
     ///         T: Equivalent<U>, // 👈
     ///     {}
     ///     ```
     ///
-    ///     This *usually* suffices, but results in unnecessarily-bounded generics.
+    ///     This *usually* suffices, but can result in unnecessarily-bounded generics.
     ///
     ///     For instance, `Example<WeirdNonComparable>` won't compile, even though `*const …` can be
-    ///     compared with anything else.
-    ///
-    ///     This is what the stdlib does.
+    ///     compared with any other pointer, no matter the pointee.
     ///
     ///   - Or do we bound based on the fields themselves? For instance:
     ///
     ///     ```rs
-    ///     impl<TU> Equivalent<Example<U>> for for Example<T>
+    ///     impl<TU> Equivalent<Example<U>> for Example<T>
     ///     where
     ///         *const T: Equivalent<*const U>, // 👈
     ///     {}
@@ -268,14 +213,15 @@ fn common(
         Data::Struct(data_struct) => {
             if PERFECT_DERIVES {
                 generics_both.make_where_clause().predicates.extend(
-                    data_struct.fields.iter().map(|f| -> WherePredicate {
-                        let ty = &f.ty;
-                        let mut ty2: Type = ty.clone();
-                        mangler.visit_type_mut(&mut ty2);
-                        parse_quote_spanned!(ty.span()=>
-                            #ty : #Trait < #ty2 >
-                        )
-                    }),
+                    data_struct.fields.iter().map(
+                        |Field { ty, .. }| -> WherePredicate {
+                            let mut mangled_ty: Type = ty.clone();
+                            mangling_visitor.visit_type_mut(&mut mangled_ty);
+                            parse_quote_spanned!(ty.span()=>
+                                #ty : #Trait < #mangled_ty >
+                            )
+                        },
+                    ),
                 );
             }
 
@@ -313,12 +259,12 @@ fn common(
                     data_enum.variants.iter().flat_map(|v| {
                         v.fields
                             .iter()
-                            .map(|f| -> WherePredicate {
-                                let ty = &f.ty;
-                                let mut ty2: Type = ty.clone();
-                                mangler.visit_type_mut(&mut ty2);
+                            .map(|Field { ty, .. }| -> WherePredicate {
+                                let mut mangled_ty: Type = ty.clone();
+                                mangling_visitor
+                                    .visit_type_mut(&mut mangled_ty);
                                 parse_quote_spanned!(ty.span()=>
-                                    #ty : #Trait < #ty2 >
+                                    #ty : #Trait < #mangled_ty >
                                 )
                             })
                             .collect::<Vec<_>>()
@@ -334,7 +280,7 @@ fn common(
             ) -> impl Iterator<Item = (Ident, Ident)> {
                 v.fields.members().map(|each_field_name: Member| {
                     match each_field_name {
-                        Member::Named(ref ident) => (
+                        Member::Named(ident) => (
                             format_ident!("lhs_{ident}"),
                             format_ident!("rhs_{ident}"),
                         ),
@@ -347,7 +293,7 @@ fn common(
             }
             fn each_method(
                 Trait @ _: &TokenStream2,
-                method: &Ident,
+                method: &TokenStream2,
                 v: &Variant,
             ) -> impl Iterator<Item = TokenStream2> {
                 field_names_of_variant(v).map(move |(lhs_field, rhs_field)| {
@@ -360,11 +306,12 @@ fn common(
                 })
             }
             let kleene = &quote!();
-            let if_equivalent = if matches!(which, WhichOne::Equivalent) {
-                &[kleene][..]
-            } else {
-                &[]
-            };
+            let if_equivalent =
+                if matches!(which_derive, WhichDerive::Equivalent) {
+                    &[kleene][..]
+                } else {
+                    &[]
+                };
             let enum_arms = (0..).zip(&data_enum.variants).map(|(i, v)| {
                 let (each_field_name_lhs, each_field_name_rhs) =
                     field_names_of_variant(v).collect::<(Vec<_>, Vec<_>)>();
@@ -373,24 +320,7 @@ fn common(
                 let fn_body =
                     fold_field_outputs(&mut each_method(Trait, method, v));
                 let VariantName @ _ = &v.ident;
-                let if_comparable_fallback =
-                    matches!(which, WhichOne::Comparable).then(|| {
-                        let EachSubVariant @ _ =
-                            data_enum.variants.iter().take(i).map(|v| &v.ident);
-                        quote!(
-                            #(
-                                (
-                                    #Type::#EachSubVariant { .. },
-                                    #Type::#VariantName { .. },
-                                ) => ::core::cmp::Ordering::Less,
-                                (
-                                    #Type::#VariantName { .. },
-                                    #Type::#EachSubVariant { .. },
-                                ) => ::core::cmp::Ordering::Greater,
-                            )*
-                        )
-                    });
-                quote!(
+                let same_variant_match_arm = quote! {
                     (
                         #Type::#VariantName {
                             #(
@@ -403,6 +333,39 @@ fn common(
                             )*
                         },
                     ) => #fn_body,
+                };
+                // if !comparable, an empty `TokenStream`, otherwise, match arms covering all the
+                // non-matching cases (`for i in 0..num_variants: for k in 0..i: (k, i), (i, k)`).
+                // (We could halve it by using a fallback over all the, say, `(i, k)` cases, but
+                // that won't change the `O(n²)` complexity anyways, and it would prevent getting
+                // exhasutive-matching-checking in our favor.)
+                let if_comparable_fallback = matches!(
+                    which_derive,
+                    WhichDerive::Comparable
+                )
+                .then(|| {
+                    // We don't have access to an `Ord`-comparable `mem::discriminant`, so we have
+                    // to roll up our sleeves and DIO, by taking advantage of the following:
+                    // `for{k < i}, variants[k] < variants[i]`, i.e.,
+                    // `for variant in &variants[..i] { variant < variants[i] }`, i.e.,
+                    // `#EachSubVariant < #VariantName`
+                    let EachSubVariant @ _ =
+                        data_enum.variants.iter().take(i).map(|v| &v.ident);
+                    quote!(
+                        #(
+                            (
+                                #Type::#EachSubVariant { .. },
+                                #Type::#VariantName { .. },
+                            ) => ::core::cmp::Ordering::Less,
+                            (
+                                #Type::#VariantName { .. },
+                                #Type::#EachSubVariant { .. },
+                            ) => ::core::cmp::Ordering::Greater,
+                        )*
+                    )
+                });
+                quote!(
+                    #same_variant_match_arm
 
                     #if_comparable_fallback
                 )

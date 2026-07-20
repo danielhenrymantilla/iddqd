@@ -18,17 +18,6 @@ pub trait Equivalent<K: ?Sized> {
     fn equivalent(&self, key: &K) -> bool;
 }
 
-// impl<Q: ?Sized, K: ?Sized> Equivalent<K> for Q
-// where
-//     Q: Eq,
-//     K: Borrow<Q>,
-// {
-//     #[inline]
-//     fn equivalent(&self, key: &K) -> bool {
-//         PartialEq::eq(self, key.borrow())
-//     }
-// }
-
 /// Key ordering trait.
 ///
 /// This trait allows ordered map lookup to be customized. It has one blanket
@@ -39,17 +28,6 @@ pub trait Comparable<K: ?Sized>: Equivalent<K> {
     /// Compare self to `key` and return their ordering.
     fn compare(&self, key: &K) -> Ordering;
 }
-
-// impl<Q: ?Sized, K: ?Sized> Comparable<K> for Q
-// where
-//     Q: Ord,
-//     K: Borrow<Q>,
-// {
-//     #[inline]
-//     fn compare(&self, key: &K) -> Ordering {
-//         Ord::cmp(self, key.borrow())
-//     }
-// }
 
 simple_impl! {
     u8, u16, u32, usize, u64, u128,
@@ -179,6 +157,18 @@ where
             (Some(a), Some(b)) if T::equivalent(a, b) => true,
             _ => false,
         }
+    }
+}
+
+impl<T, U> Equivalent<*const U> for *const T {
+    fn equivalent(&self, key: &*const U) -> bool {
+        self.addr() == key.addr()
+    }
+}
+
+impl<T, U> Comparable<*const U> for *const T {
+    fn compare(&self, key: &*const U) -> Ordering {
+        Ord::cmp(&self.addr(), &key.addr())
     }
 }
 
