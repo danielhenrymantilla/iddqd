@@ -58,6 +58,14 @@ fn generics_mangler(g: &Generics) -> (Mangler, Generics) {
             }
         }
 
+        fn visit_type_param_mut(&mut self, tp: &mut syn::TypeParam) {
+            subrecursing::visit_type_param_mut(self, tp);
+            let ident = &tp.ident;
+            if self.type_params.contains(&ident.to_string()) {
+                tp.ident = mangle_ident(ident);
+            }
+        }
+
         fn visit_type_path_mut(&mut self, ty: &mut TypePath) {
             subrecursing::visit_type_path_mut(self, ty);
             match (&ty.qself, ty.path.get_ident()) {
@@ -84,7 +92,8 @@ fn generics_mangler(g: &Generics) -> (Mangler, Generics) {
     (mangler, ret)
 }
 
-const _: &str = stringify! {
+#[cfg(false)]
+const REMINDER: &str = stringify! {
     pub trait Equivalent<K: ?Sized> {
         /// Compare self to `key` and return `true` if they are equal.
         fn equivalent(&self, key: &K) -> bool;
