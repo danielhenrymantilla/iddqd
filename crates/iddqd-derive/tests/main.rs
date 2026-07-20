@@ -25,6 +25,6 @@ impl Comparable<&str> for &str {
 }
 
 #[derive(::iddqd_derive::Equivalent, ::iddqd_derive::Comparable)]
-struct S<'a> {
+struct _S<'a> {
     x: &'a str,
 }
