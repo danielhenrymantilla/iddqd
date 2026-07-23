@@ -1,0 +1,150 @@
+use ::core::{cell::Cell, ptr};
+
+use ::higher_kinded_types::prelude::ForLifetimeMaybeUnsized;
+
+pub struct ScopedTls<T: 'static + ForLifetimeMaybeUnsized> {
+    inner: &'static ::std::thread::LocalKey<
+        Cell<
+            Option<
+                // Note: what we'd want here is `Unsafe![<'a, 'b> = &'a T::Of<'b>]`
+                ptr::NonNull<T::Of<'static>>,
+            >,
+        >,
+    >,
+}
+
+#[rustfmt::skip]
+macro_rules! scoped_tls {(
+    $(#[doc $($doc:tt)*])*
+    $pub:vis static $NAME:ident: $T:ty;
+) => (
+    $(#[doc $($doc)*])*
+    $pub static $NAME: $crate::support::scoped_tls::ScopedTls<ForLt![<'scoped> = $T]> = {
+        ::std::thread_local! {
+            static __INNER: ::core::cell::Cell<
+                ::core::option::Option<
+                    ptr::NonNull<
+                        <ForLt![<'scoped> = $T] as ::higher_kinded_types::advanced::ForLifetimeMaybeUnsized>::Of<'static>,
+                    >
+                >,
+            > = const { ::core::cell::Cell::new(::core::option::Option::None) };
+        }
+        // SAFETY: it's indeed `None`.
+        unsafe { $crate::support::scoped_tls::ScopedTls::__new(&__INNER) }
+    };
+)}
+pub(crate) use scoped_tls;
+
+impl<T: 'static + ForLifetimeMaybeUnsized> ScopedTls<T> {
+    #[doc(hidden)]
+    /// Not part of the public API, macro-only API.
+    ///
+    /// Safety: `inner` must contain a null/`None` pointer.
+    pub const unsafe fn __new(
+        inner: &'static ::std::thread::LocalKey<
+            Cell<
+                Option<
+                    // Note: what we'd want here is `Unsafe![<'a, 'b> = &'a T::Of<'b>]`
+                    ptr::NonNull<T::Of<'static>>,
+                >,
+            >,
+        >,
+    ) -> Self {
+        Self { inner }
+    }
+
+    pub fn with_value<'a, 'r, R>(
+        &'static self,
+        value: &'r T::Of<'a>,
+        scope: impl FnOnce() -> R,
+    ) -> R {
+        let outer = self.inner.replace(Some(
+            // SAFETY: erasing the lifetimes into an inert value.
+            // Morally, the `Thing<'x, 'y> -> unsafe<'a, 'b> Thing<'a, 'b>` inert erasure.
+            // All the subtlety lies in the `unsafe` conversion done in the other direction.
+            unsafe {
+                ::core::mem::transmute::<&'r T::Of<'a>, &'r T::Of<'static>>(
+                    value,
+                )
+            }
+            .into(),
+        ));
+        struct ClearOnUnwindGuard<T: 'static + ForLifetimeMaybeUnsized> {
+            tls: &'static ScopedTls<T>,
+            outer: Option<ptr::NonNull<T::Of<'static>>>,
+        }
+        impl<T: ForLifetimeMaybeUnsized> Drop for ClearOnUnwindGuard<T> {
+            fn drop(&mut self) {
+                self.tls.inner.set(self.outer);
+            }
+        }
+        let guard = ClearOnUnwindGuard { tls: self, outer };
+        let ret = scope();
+        ::core::mem::forget(guard);
+        self.inner.set(outer);
+        ret
+    }
+
+    pub fn get_with<R>(
+        &'static self,
+        yield_: impl for<'a, 'r> FnOnce(Option<&'r T::Of<'a>>) -> R,
+    ) -> R {
+        self.inner.with(|r: &Cell<Option<ptr::NonNull<T::Of<'static>>>>| {
+            match r.get() {
+                None => yield_(None),
+                Some(ptr) => {
+                    // SAFETY: if it is `Some`, it means **we're inside** some [`Self::with_value`]
+                    // scope.
+                    //
+                    // And that scope is known to be smaller than either of `'r`, `'a`, since those
+                    // are non-`for<>` generic lifetime params enscoping that `fn`.
+                    //
+                    // Thus, if we call the scope of our current `fn get_with()` call as `'fn`, we
+                    // have:
+                    // `exists<'a : 'fn, 'r : 'fn> typeof(ptr) = &'r T::Of<'a>`.
+                    //
+                    // Our caller `FnOnce` is one able to handle `for<'a, 'r> &'r T::Of<'a>` (when
+                    // `Some`).
+                    //
+                    // So no matter our choice of `'r, 'a` when unerasing our conceptual
+                    // `unsafe<'0, '1> &'0 T::Of<'1>` into `&'r T::Of<'a>`, i.e., when reïfying a
+                    // concrete instance of this `unsafe<>` type via some conjured concrete
+                    // lifetimes, this is going to be fine.
+                    //
+                    //   - (the actual choice here remains, in practice, un(der)specified. Also
+                    //     called *unbounded* lifetimes. These are generally **very dangerous** when
+                    //     produced by `unsafe`, as we might unify with caller-arbitrarily-picked
+                    //     lifetimes of their choosing. But such a general problem/danger does not
+                    //     apply here, since the caller has no lifetimes to pick, request, or
+                    //     enforce or whatnot.
+                    //
+                    //     All they have is this universal/general/generic/abstract/you-name-it
+                    //     `for<'r, 'a> …` closure signature, which entails that the onus of
+                    //     type-checking is on *their* closure, which needs to be able to correctly
+                    //     handle *any* choice of lifetimes on our behalf; notably, the
+                    //     "true"/correct choice of `'r, 'a`.
+                    //
+                    //     This is because our signature is like `get_with_1()` in the following
+                    //     one, rather than `get_with_2()`, which is where the unbounded lifetimes
+                    //     produced by our transmute could, very problematicly, be able to unify
+                    //     with *their* choice of `'x, 'y` (eg., them choosing `'x = 'y = 'static`):
+                    //
+                    //     ```rs
+                    //     fn get_with_1(f: impl for<'x, 'y> FnOnce(Option<&'x T::Of<'y>>))
+                    //     // vs.
+                    //     fn get_with_2<'x, 'y>(f: impl FnOnce(Option<&'x T::Of<'y>>))
+                    //     ```
+                    let r: &T::Of<'_> = unsafe {
+                        // We can't use `.cast()` since `T::Of<'_>` may not be `Sized`.
+                        ::core::mem::transmute::<
+                            ptr::NonNull<T::Of<'static>>,
+                            ptr::NonNull<T::Of<'_>>,
+                        >(ptr)
+                        .as_ref()
+                    };
+                    yield_(Some(r))
+                }
+            }
+        })
+    }
+}

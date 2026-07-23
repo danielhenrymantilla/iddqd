@@ -14,145 +14,13 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    cell::Cell,
     cmp::Ordering,
     hash::{BuildHasher, Hash},
     ptr,
 };
 use equivalent::Comparable;
-use higher_kinded_types::prelude::ForLifetimeMaybeUnsized;
-use std::thread::LocalKey;
 
-pub struct ScopedTls<T: 'static + ForLifetimeMaybeUnsized> {
-    inner: &'static LocalKey<
-        Cell<
-            Option<
-                // Note: what we'd want here is `Unsafe![<'a, 'b> = &'a T::Of<'b>]`
-                ptr::NonNull<T::Of<'static>>,
-            >,
-        >,
-    >,
-}
-
-macro_rules! scoped_tls {(
-    $(#[doc $($doc:tt)*])*
-    $pub:vis static $NAME:ident: $T:ty;
-) => (
-    $(#[doc $($doc)*])*
-    $pub static $NAME: ScopedTls<ForLt![<'scoped> = $T]> = ScopedTls {
-        inner: {
-            ::std::thread_local! {
-                static __INNER: ::core::cell::Cell<
-                    ::core::option::Option<
-                        ptr::NonNull<
-                            <ForLt![<'scoped> = $T] as ForLifetimeMaybeUnsized>::Of<'static>,
-                        >
-                    >,
-                > = const { ::core::cell::Cell::new(::core::option::Option::None) };
-            }
-            &__INNER
-        },
-    };
-)}
-
-impl<T: 'static + ForLifetimeMaybeUnsized> ScopedTls<T> {
-    pub fn with_value<'a, 'r, R>(
-        &'static self,
-        value: &'r T::Of<'a>,
-        scope: impl FnOnce() -> R,
-    ) -> R {
-        let outer = self.inner.replace(Some(
-            // SAFETY: erasing the lifetimes into an inert value.
-            // Morally, the `Thing<'x, 'y> -> unsafe<'a, 'b> Thing<'a, 'b>` inert erasure.
-            // All the subtlety lies in the `unsafe` conversion done in the other direction.
-            unsafe {
-                ::core::mem::transmute::<&'r T::Of<'a>, &'r T::Of<'static>>(
-                    value,
-                )
-            }
-            .into(),
-        ));
-        struct ClearOnUnwindGuard<T: 'static + ForLifetimeMaybeUnsized> {
-            tls: &'static ScopedTls<T>,
-            outer: Option<ptr::NonNull<T::Of<'static>>>,
-        }
-        impl<T: ForLifetimeMaybeUnsized> Drop for ClearOnUnwindGuard<T> {
-            fn drop(&mut self) {
-                self.tls.inner.set(self.outer);
-            }
-        }
-        let guard = ClearOnUnwindGuard { tls: self, outer };
-        let ret = scope();
-        ::core::mem::forget(guard);
-        self.inner.set(outer);
-        ret
-    }
-
-    pub fn get_with<R>(
-        &'static self,
-        yield_: impl for<'a, 'r> FnOnce(Option<&'r T::Of<'a>>) -> R,
-    ) -> R {
-        self.inner.with(|r: &Cell<Option<ptr::NonNull<T::Of<'static>>>>| {
-            match r.get() {
-                None => yield_(None),
-                Some(ptr) => {
-                    // SAFETY: if it is `Some`, it means **we're inside** some [`Self::with_value`]
-                    // scope.
-                    //
-                    // And that scope is known to be smaller than either of `'r`, `'a`, since those
-                    // are non-`for<>` generic lifetime params enscoping that `fn`.
-                    //
-                    // Thus, if we call the scope of our current `fn get_with()` call as `'fn`, we
-                    // have:
-                    // `exists<'a : 'fn, 'r : 'fn> typeof(ptr) = &'r T::Of<'a>`.
-                    //
-                    // Our caller `FnOnce` is one able to handle `for<'a, 'r> &'r T::Of<'a>` (when
-                    // `Some`).
-                    //
-                    // So no matter our choice of `'r, 'a` when unerasing our conceptual
-                    // `unsafe<'0, '1> &'0 T::Of<'1>` into `&'r T::Of<'a>`, i.e., when reïfying a
-                    // concrete instance of this `unsafe<>` type via some conjured concrete
-                    // lifetimes, this is going to be fine.
-                    //
-                    //   - (the actual choice here remains, in practice, un(der)specified. Also
-                    //     called *unbounded* lifetimes. These are generally **very dangerous** when
-                    //     produced by `unsafe`, as we might unify with caller-arbitrarily-picked
-                    //     lifetimes of their choosing. But such a general problem/danger does not
-                    //     apply here, since the caller has no lifetimes to pick, request, or
-                    //     enforce or whatnot.
-                    //
-                    //     All they have is this universal/general/generic/abstract/you-name-it
-                    //     `for<'r, 'a> …` closure signature, which entails that the onus of
-                    //     type-checking is on *their* closure, which needs to be able to correctly
-                    //     handle *any* choice of lifetimes on our behalf; notably, the
-                    //     "true"/correct choice of `'r, 'a`.
-                    //
-                    //     This is because our signature is like `get_with_1()` in the following
-                    //     one, rather than `get_with_2()`, which is where the unbounded lifetimes
-                    //     produced by our transmute could, very problematicly, be able to unify
-                    //     with *their* choice of `'x, 'y` (eg., them choosing `'x = 'y = 'static`):
-                    //
-                    //     ```rs
-                    //     fn get_with_1(f: impl for<'x, 'y> FnOnce(Option<&'x T::Of<'y>>))
-                    //     // vs.
-                    //     fn get_with_2<'x, 'y>(f: impl FnOnce(Option<&'x T::Of<'y>>))
-                    //     ```
-                    let r: &T::Of<'_> = unsafe {
-                        // We can't use `.cast()` since `T::Of<'_>` may not be `Sized`.
-                        ::core::mem::transmute::<
-                            ptr::NonNull<T::Of<'static>>,
-                            ptr::NonNull<T::Of<'_>>,
-                        >(ptr)
-                        .as_ref()
-                    };
-                    yield_(Some(r))
-                }
-            }
-        })
-    }
-}
-
-scoped_tls! {
+super::scoped_tls! {
     /// Stores an external comparator function to provide dynamic scoping.
     ///
     /// std's BTreeMap doesn't allow passing an external comparator, so we make
@@ -160,19 +28,24 @@ scoped_tls! {
     ///
     /// This works by:
     ///
-    /// * We store an `Index` in the BTreeMap which knows how to call this
-    ///   dynamic comparator.
-    /// * When we need to compare two `Index` values, we create a CmpDropGuard.
-    ///   This struct is responsible for managing the lifetime of the
-    ///   comparator.
-    /// * When the CmpDropGuard is dropped (including due to a panic), we reset
-    ///   the comparator to None.
+    ///  1. storing an `Index` in the BTreeMap,
+    ///
+    ///  1. then, when we need to compare two `Index` values, we call
+    ///   <code>[CMP].[with_value()][with_value]</code> to *safely* set it to
+    ///   a scoped arbitrary `dyn Fn` comparator;
+    ///
+    ///  1. the `Index` in the map knows how to call this dynamic comparator: it does
+    ///     <code>[CMP].[get_with()][get_with]</code>.
+    ///
+    /// [get_with]: `super::scoped_tls::ScopedTls::get_with`
+    /// [with_value]: `super::scoped_tls::ScopedTls::with_value`
     ///
     /// Comparators take `&Index` rather than `Index` by value because `Index`
     /// wraps `IndexCell` (an `AtomicU32` newtype) for in-place mutation in
     /// `remap_indexes`, and `AtomicU32` isn't `Copy`.
     ///
     /// This is not great! (For one, thread-locals and no-std don't really mix.)
+    ///
     /// Some alternatives:
     ///
     /// * Using `Borrow` as described in
@@ -186,11 +59,12 @@ scoped_tls! {
     /// * Using a third-party BTreeMap implementation that allows passing in
     ///   external comparators. As of 2025-05, there appear to be two options:
     ///
-    ///   1. copse (https://docs.rs/copse), which doesn't seem like a good fit
-    ///      here.
-    ///   2. btree_monstrousity (https://crates.io/crates/btree_monstrousity),
-    ///      which has an API perfect for this but is, uhh, not really
-    ///      production-ready.
+    ///     - `::copse` (https://docs.rs/copse), which doesn't seem like a good fit
+    ///       here.
+    ///
+    ///     - `::btree_monstrousity` (https://docs.rs/btree_monstrousity),
+    ///       which has an API perfect for this but is, uhh, not really
+    ///       production-ready.
     ///
     ///   Third-party implementations also run the risk of being relatively
     ///   untested.
