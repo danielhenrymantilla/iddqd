@@ -93,6 +93,38 @@ impl<T: 'static + ForLifetimeMaybeUnsized> ScopedTls<T> {
         ret
     }
 
+    /// Same as [`Self::with_value()`], but with an artificial, dedicated
+    /// `<T_Of>` generic parameter, so `rust-analyzer` on-hover info and whatnot show what this type
+    /// is about, for when the layers of generics may obscure things.
+    ///
+    /// Of course, such hover is limited and *doesn't show lifetimes*, heh, but at least it gives
+    /// some amount of info.
+    //
+    // OTOH, this kind of "point-lifetime" bounds confuses Rust, as `T::Of<'b>` now _might_ or
+    // might not be concerned by that bound. Rustc hates this ~~one trick~~. With passion. It
+    // palliates the resulting "cognitive dissonance" by thenceforth assuming any such `'b` is, in
+    // fact, `'a`, gaslighting against any hope for this not to be necessarily true.
+    //
+    //   - _e.g._, mention of `T::Of<'static>` in the `fn` body would only be acceptable by
+    //     Rust if `'static = 'a`, _i.e._, if `'a : 'static`, which obviously does not necessarily
+    //     hold.
+    //
+    // Hence the two-function split: the non-`_dbg fn` "forgets" the "point-lifetime" bound,
+    // avoiding the bug.
+    #[doc(hidden)]
+    #[expect(nonstandard_style)]
+    pub fn _dbg_with_value<'r, 'exists_a, T_Of: ?Sized, R>(
+        &'static self,
+        value: &'r T_Of,
+        scope: impl FnOnce() -> R,
+    ) -> R
+    where
+        // exists<'exists_a>
+        T::Of<'exists_a>: Is<ItSelf = T_Of>,
+    {
+        self.with_value(dbg::helper(value), scope)
+    }
+
     pub fn get_with<R>(
         &'static self,
         yield_: impl for<'r, 'a> FnOnce(Option<&'r T::Of<'a>>) -> R,
@@ -154,5 +186,42 @@ impl<T: 'static + ForLifetimeMaybeUnsized> ScopedTls<T> {
                 }
             }
         })
+    }
+
+    /// Same as [`Self::get_with()`], but with an artificial, dedicated
+    /// `<T_Of>` generic parameter, so `rust-analyzer` on-hover info and whatnot show what this type
+    /// is about, for when the layers of generics may obscure things.
+    #[doc(hidden)]
+    #[expect(nonstandard_style)]
+    pub fn _dbg_get_with<'exists, T_Of: ?Sized, R>(
+        &'static self,
+        yield_: impl for<'r, 'a> FnOnce(Option<&'r T::Of<'a>>) -> R,
+    ) -> R
+    where
+        // doc-only:
+        // exists<'exists>
+        T::Of<'exists>: Is<ItSelf = T_Of>,
+    {
+        self.get_with(yield_)
+    }
+}
+
+use dbg::Is;
+mod dbg {
+    #![allow(unused)]
+
+    pub trait Is {
+        type ItSelf: ?Sized;
+    }
+
+    impl<T: ?Sized> Is for T {
+        type ItSelf = Self;
+    }
+
+    /// Function-boundary insulated from outstanding `T: Is<Itself = U>` context (which makes Rust
+    /// temporarily forget that `T: Is<ItSelf = T>` also holds, resulting in silly mismatches).
+    #[inline]
+    pub fn helper<T: ?Sized>(r: &<T as Is>::ItSelf) -> &T {
+        r
     }
 }
