@@ -6,7 +6,7 @@
 
 use super::{ItemIndex, item_set::IndexRemap, map_hash::MapHash};
 use crate::{
-    Feed, ForLt,
+    ForLt,
     internal::{TableValidationError, ValidateCompact, table_validation_fail},
 };
 use alloc::{
@@ -20,14 +20,15 @@ use core::{
     ptr,
 };
 use equivalent::Comparable;
+use higher_kinded_types::prelude::ForLifetimeMaybeUnsized;
 use std::thread::LocalKey;
 
-pub struct ScopedTls<T: 'static + ForLt> {
+pub struct ScopedTls<T: 'static + ForLifetimeMaybeUnsized> {
     inner: &'static LocalKey<
         Cell<
             Option<
-                // Note: what we'd want here is `Unsafe![<'a, 'b> = &'a Feed<'b, T>]`
-                ptr::NonNull<Feed<'static, T>>,
+                // Note: what we'd want here is `Unsafe![<'a, 'b> = &'a T::Of<'b>]`
+                ptr::NonNull<T::Of<'static>>,
             >,
         >,
     >,
@@ -43,7 +44,9 @@ macro_rules! scoped_tls {(
             ::std::thread_local! {
                 static __INNER: ::core::cell::Cell<
                     ::core::option::Option<
-                        ptr::NonNull<$crate::Feed<'static, ForLt![<'scoped> = $T]>>
+                        ptr::NonNull<
+                            <ForLt![<'scoped> = $T] as ForLifetimeMaybeUnsized>::Of<'static>,
+                        >
                     >,
                 > = const { ::core::cell::Cell::new(::core::option::Option::None) };
             }
@@ -52,10 +55,10 @@ macro_rules! scoped_tls {(
     };
 )}
 
-impl<T: 'static + ForLt> ScopedTls<T> {
+impl<T: 'static + ForLifetimeMaybeUnsized> ScopedTls<T> {
     pub fn with_value<'a, 'r, R>(
         &'static self,
-        value: &'r Feed<'a, T>,
+        value: &'r T::Of<'a>,
         scope: impl FnOnce() -> R,
     ) -> R {
         let outer = self.inner.replace(Some(
@@ -63,17 +66,17 @@ impl<T: 'static + ForLt> ScopedTls<T> {
             // Morally, the `Thing<'x, 'y> -> unsafe<'a, 'b> Thing<'a, 'b>` inert erasure.
             // All the subtlety lies in the `unsafe` conversion done in the other direction.
             unsafe {
-                ::core::mem::transmute::<&'r Feed<'a, T>, &'r Feed<'static, T>>(
+                ::core::mem::transmute::<&'r T::Of<'a>, &'r T::Of<'static>>(
                     value,
                 )
             }
             .into(),
         ));
-        struct ClearOnUnwindGuard<T: 'static + ForLt> {
+        struct ClearOnUnwindGuard<T: 'static + ForLifetimeMaybeUnsized> {
             tls: &'static ScopedTls<T>,
-            outer: Option<ptr::NonNull<Feed<'static, T>>>,
+            outer: Option<ptr::NonNull<T::Of<'static>>>,
         }
-        impl<T: ForLt> Drop for ClearOnUnwindGuard<T> {
+        impl<T: ForLifetimeMaybeUnsized> Drop for ClearOnUnwindGuard<T> {
             fn drop(&mut self) {
                 self.tls.inner.set(self.outer);
             }
@@ -87,9 +90,9 @@ impl<T: 'static + ForLt> ScopedTls<T> {
 
     pub fn get_with<R>(
         &'static self,
-        yield_: impl for<'a, 'r> FnOnce(Option<&'r Feed<'a, T>>) -> R,
+        yield_: impl for<'a, 'r> FnOnce(Option<&'r T::Of<'a>>) -> R,
     ) -> R {
-        self.inner.with(|r: &Cell<Option<ptr::NonNull<Feed<'static, T>>>>| {
+        self.inner.with(|r: &Cell<Option<ptr::NonNull<T::Of<'static>>>>| {
             match r.get() {
                 None => yield_(None),
                 Some(ptr) => {
@@ -101,19 +104,47 @@ impl<T: 'static + ForLt> ScopedTls<T> {
                     //
                     // Thus, if we call the scope of our current `fn get_with()` call as `'fn`, we
                     // have:
-                    // `exists<'a : 'fn, 'r : 'fn> typeof(ptr) = &'r Feed<'a, T>`.
+                    // `exists<'a : 'fn, 'r : 'fn> typeof(ptr) = &'r T::Of<'a>`.
                     //
-                    // Our caller `FnOnce` is one able to handle `for<'a, 'r> &'r Feed<'a, T>` (when
+                    // Our caller `FnOnce` is one able to handle `for<'a, 'r> &'r T::Of<'a>` (when
                     // `Some`).
                     //
-                    // Thus, it is fine to perform the
-                    // `unsafe<'a, 'r> &'r Feed<'a, T> -> &'?1 Feed<'?2, T>` unerasure, i.e., to
-                    // reïfy a concrete instance of this `unsafe<>` type via some conjured concrete
-                    // lifetimes (even if they happen to be underconstrained here; so they could be
-                    // *anything*, including *the worst*: the only "witness" of such a thing is our
-                    // generativity-general `yield_` closure from the caller, designed to be able to
-                    // handle *anything*, including "the worst" for them, i.e., *the best* for us).
-                    let r: &Feed<'_, T> = unsafe { ptr.cast().as_ref() };
+                    // So no matter our choice of `'r, 'a` when unerasing our conceptual
+                    // `unsafe<'0, '1> &'0 T::Of<'1>` into `&'r T::Of<'a>`, i.e., when reïfying a
+                    // concrete instance of this `unsafe<>` type via some conjured concrete
+                    // lifetimes, this is going to be fine.
+                    //
+                    //   - (the actual choice here remains, in practice, un(der)specified. Also
+                    //     called *unbounded* lifetimes. These are generally **very dangerous** when
+                    //     produced by `unsafe`, as we might unify with caller-arbitrarily-picked
+                    //     lifetimes of their choosing. But such a general problem/danger does not
+                    //     apply here, since the caller has no lifetimes to pick, request, or
+                    //     enforce or whatnot.
+                    //
+                    //     All they have is this universal/general/generic/abstract/you-name-it
+                    //     `for<'r, 'a> …` closure signature, which entails that the onus of
+                    //     type-checking is on *their* closure, which needs to be able to correctly
+                    //     handle *any* choice of lifetimes on our behalf; notably, the
+                    //     "true"/correct choice of `'r, 'a`.
+                    //
+                    //     This is because our signature is like `get_with_1()` in the following
+                    //     one, rather than `get_with_2()`, which is where the unbounded lifetimes
+                    //     produced by our transmute could, very problematicly, be able to unify
+                    //     with *their* choice of `'x, 'y` (eg., them choosing `'x = 'y = 'static`):
+                    //
+                    //     ```rs
+                    //     fn get_with_1(f: impl for<'x, 'y> FnOnce(Option<&'x T::Of<'y>>))
+                    //     // vs.
+                    //     fn get_with_2<'x, 'y>(f: impl FnOnce(Option<&'x T::Of<'y>>))
+                    //     ```
+                    let r: &T::Of<'_> = unsafe {
+                        // We can't use `.cast()` since `T::Of<'_>` may not be `Sized`.
+                        ::core::mem::transmute::<
+                            ptr::NonNull<T::Of<'static>>,
+                            ptr::NonNull<T::Of<'_>>,
+                        >(ptr)
+                        .as_ref()
+                    };
                     yield_(Some(r))
                 }
             }
@@ -168,11 +199,8 @@ scoped_tls! {
     ///   default choice to balance cache locality, but other options are worth
     ///   benchmarking. We do need to provide a comparator, though, so radix
     ///   trees and such are out of the question.
-    static CMP: &'scoped IndexCmp<'scoped>;
+    static CMP: dyn 'scoped + Fn(&Index, &Index) -> Ordering;
 }
-
-/// External comparator type used via `CMP`'s dynamic scoping.
-type IndexCmp<'u> = dyn 'u + Fn(&Index, &Index) -> Ordering;
 
 /// A B-tree-based table with an external comparator.
 #[derive(Clone, Debug, Default)]
@@ -288,9 +316,7 @@ impl MapBTreeTable {
         Q: ?Sized + Comparable<K>,
         F: Fn(ItemIndex) -> K,
     {
-        let f = &find_cmp(key, lookup) as &IndexCmp<'_>;
-
-        CMP.with_value(&f, || {
+        CMP.with_value(&find_cmp(key, lookup), || {
             match self.items.get_key_value(&Index::sentinel()) {
                 Some((ix, ())) if ix.value() == Index::SENTINEL_VALUE => {
                     panic!("internal map shouldn't store sentinel value")
@@ -315,14 +341,14 @@ impl MapBTreeTable {
         Q: ?Sized + Comparable<K>,
         F: Fn(ItemIndex) -> K,
     {
-        let f = &insert_cmp(index, key, lookup) as &IndexCmp<'_>;
-        let entry =
-            CMP.with_value(&f, || match self.items.entry(Index::new(index)) {
+        let entry = CMP.with_value(&insert_cmp(index, key, lookup), || {
+            match self.items.entry(Index::new(index)) {
                 btree_map::Entry::Vacant(entry) => entry,
                 btree_map::Entry::Occupied(_) => {
                     panic!("internal map already contains index {index}")
                 }
-            });
+            }
+        });
 
         PreparedBTreeInsert { entry }
     }
@@ -338,8 +364,9 @@ impl MapBTreeTable {
         K: Ord,
         K: Comparable<K>,
     {
-        let f = &insert_cmp(index, key, lookup) as &IndexCmp<'_>;
-        let entry = CMP.with_value(&f, || self.items.entry(Index::new(index)));
+        let entry = CMP.with_value(&insert_cmp(index, key, lookup), || {
+            self.items.entry(Index::new(index))
+        });
 
         match entry {
             btree_map::Entry::Vacant(_) => {
@@ -500,13 +527,10 @@ impl PreparedBTreeRemove<'_> {
     }
 }
 
-fn find_cmp<'a, K, Q, F>(
-    key: &'a Q,
-    lookup: F,
-) -> impl Fn(&Index, &Index) -> Ordering + 'a
+fn find_cmp<K, Q, F>(key: &Q, lookup: F) -> impl Fn(&Index, &Index) -> Ordering
 where
     Q: ?Sized + Comparable<K>,
-    F: 'a + Fn(ItemIndex) -> K,
+    F: Fn(ItemIndex) -> K,
     K: Ord,
 {
     move |a: &Index, b: &Index| {
@@ -531,14 +555,14 @@ where
     }
 }
 
-fn insert_cmp<'a, K, Q, F>(
+fn insert_cmp<K, Q, F>(
     index: ItemIndex,
-    key: &'a Q,
+    key: &Q,
     lookup: F,
-) -> impl Fn(&Index, &Index) -> Ordering + 'a
+) -> impl Fn(&Index, &Index) -> Ordering
 where
     Q: ?Sized + Comparable<K>,
-    F: 'a + Fn(ItemIndex) -> K,
+    F: Fn(ItemIndex) -> K,
     K: Ord,
 {
     move |a: &Index, b: &Index| {
