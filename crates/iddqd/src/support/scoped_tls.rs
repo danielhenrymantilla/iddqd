@@ -6,7 +6,7 @@ pub struct ScopedTls<T: 'static + ForLifetimeMaybeUnsized> {
     inner: &'static ::std::thread::LocalKey<
         Cell<
             Option<
-                // Note: what we'd want here is `Unsafe![<'a, 'b> = &'a T::Of<'b>]`
+                // Note: what we'd really want here is `Unsafe![<'a, 'b> = &'a T::Of<'b>]`
                 ptr::NonNull<T::Of<'static>>,
             >,
         >,
@@ -29,7 +29,8 @@ macro_rules! scoped_tls {(
                 >,
             > = const { ::core::cell::Cell::new(::core::option::Option::None) };
         }
-        // SAFETY: it's indeed `None`.
+        // SAFETY: it's indeed `None` atm; otherwise `__INNER` is only set by
+        // `ScopedTls::with_value()`.
         unsafe { $crate::support::scoped_tls::ScopedTls::__new(&__INNER) }
     };
 )}
@@ -39,7 +40,8 @@ impl<T: 'static + ForLifetimeMaybeUnsized> ScopedTls<T> {
     #[doc(hidden)]
     /// Not part of the public API, macro-only API.
     ///
-    /// Safety: `inner` must contain a null/`None` pointer.
+    /// Safety: `inner` must contain either a null/`None` pointer, or something set by
+    /// [`ScopedTls::with_value()`].
     pub const unsafe fn __new(
         inner: &'static ::std::thread::LocalKey<
             Cell<
@@ -53,7 +55,7 @@ impl<T: 'static + ForLifetimeMaybeUnsized> ScopedTls<T> {
         Self { inner }
     }
 
-    pub fn with_value<'a, 'r, R>(
+    pub fn with_value<'r, 'a, R>(
         &'static self,
         value: &'r T::Of<'a>,
         scope: impl FnOnce() -> R,
@@ -69,17 +71,23 @@ impl<T: 'static + ForLifetimeMaybeUnsized> ScopedTls<T> {
             }
             .into(),
         ));
+
         struct ClearOnUnwindGuard<T: 'static + ForLifetimeMaybeUnsized> {
             tls: &'static ScopedTls<T>,
             outer: Option<ptr::NonNull<T::Of<'static>>>,
         }
+
+        let guard = ClearOnUnwindGuard { tls: self, outer };
+
+        let ret = scope();
+
+        // upon unwinding, do:
         impl<T: ForLifetimeMaybeUnsized> Drop for ClearOnUnwindGuard<T> {
             fn drop(&mut self) {
                 self.tls.inner.set(self.outer);
             }
         }
-        let guard = ClearOnUnwindGuard { tls: self, outer };
-        let ret = scope();
+        // else:
         ::core::mem::forget(guard);
         self.inner.set(outer);
         ret
@@ -87,7 +95,7 @@ impl<T: 'static + ForLifetimeMaybeUnsized> ScopedTls<T> {
 
     pub fn get_with<R>(
         &'static self,
-        yield_: impl for<'a, 'r> FnOnce(Option<&'r T::Of<'a>>) -> R,
+        yield_: impl for<'r, 'a> FnOnce(Option<&'r T::Of<'a>>) -> R,
     ) -> R {
         self.inner.with(|r: &Cell<Option<ptr::NonNull<T::Of<'static>>>>| {
             match r.get() {
@@ -103,7 +111,7 @@ impl<T: 'static + ForLifetimeMaybeUnsized> ScopedTls<T> {
                     // have:
                     // `exists<'a : 'fn, 'r : 'fn> typeof(ptr) = &'r T::Of<'a>`.
                     //
-                    // Our caller `FnOnce` is one able to handle `for<'a, 'r> &'r T::Of<'a>` (when
+                    // Our caller `FnOnce` is one able to handle `for<'r, 'a> &'r T::Of<'a>` (when
                     // `Some`).
                     //
                     // So no matter our choice of `'r, 'a` when unerasing our conceptual
