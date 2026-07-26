@@ -1,4 +1,4 @@
-use iddqd::{BiHashItem, bi_hash_map, bi_upcast};
+use iddqd::{BiHashItem, Feed, ForLt, bi_hash_map, bi_upcast};
 
 #[derive(Debug)]
 struct Item {
@@ -7,14 +7,14 @@ struct Item {
 }
 
 impl BiHashItem for Item {
-    type K1<'a> = u32;
-    type K2<'a> = u32;
+    type K1 = ForLt![<'a> = u32];
+    type K2 = ForLt![<'a> = u32];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         self.id
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         self.key2
     }
 

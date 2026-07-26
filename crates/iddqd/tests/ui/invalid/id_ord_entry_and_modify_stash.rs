@@ -1,4 +1,4 @@
-use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+use iddqd::{Feed, ForLt, IdOrdItem, IdOrdMap, id_upcast};
 
 #[derive(Debug)]
 struct Item {
@@ -6,9 +6,9 @@ struct Item {
 }
 
 impl IdOrdItem for Item {
-    type Key<'a> = u32;
+    type Key = ForLt![<'a> = u32];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.id
     }
 
