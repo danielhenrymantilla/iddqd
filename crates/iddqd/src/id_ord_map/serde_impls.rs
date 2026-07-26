@@ -1,4 +1,5 @@
 use super::{IdOrdItem, IdOrdMap};
+use crate::Feed;
 use core::{fmt, marker::PhantomData};
 use serde_core::{
     Deserialize, Deserializer, Serialize, Serializer,
@@ -15,7 +16,7 @@ use serde_core::{
 /// # Examples
 ///
 /// ```
-/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Comparable, Equivalent, Feed, ForLt};
 /// # use iddqd_test_utils::serde_json;
 /// use serde::{Deserialize, Serialize};
 ///
@@ -27,15 +28,15 @@ use serde_core::{
 /// }
 ///
 /// // This is a complex key, so it can't be a JSON map key.
-/// #[derive(Eq, PartialEq, PartialOrd, Ord)]
+/// #[derive(Eq, PartialEq, PartialOrd, Ord, Comparable, Equivalent)]
 /// struct ComplexKey<'a> {
 ///     id: u32,
 ///     email: &'a str,
 /// }
 ///
 /// impl IdOrdItem for Item {
-///     type Key<'a> = ComplexKey<'a>;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = ComplexKey<'a>];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         ComplexKey { id: self.id, email: &self.email }
 ///     }
 ///     id_upcast!();
@@ -150,7 +151,7 @@ where
 /// Use with serde's `with` attribute:
 ///
 /// ```
-/// use iddqd::{IdOrdItem, IdOrdMap, id_ord_map::IdOrdMapAsMap, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_ord_map::IdOrdMapAsMap, id_upcast, Feed, ForLt};
 /// use serde::{Deserialize, Serialize};
 ///
 /// #[derive(Debug, Serialize, Deserialize)]
@@ -160,8 +161,8 @@ where
 /// }
 ///
 /// impl IdOrdItem for Item {
-///     type Key<'a> = u32;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = u32];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         self.id
 ///     }
 ///     id_upcast!();
@@ -218,12 +219,12 @@ where
 impl<T> IdOrdMapAsMap<T> {
     /// Serializes an `IdOrdMap` as a JSON object/map using `key()` as keys.
     pub fn serialize<'a, Ser>(
-        map: &IdOrdMap<T>,
+        map: &'a IdOrdMap<T>,
         serializer: Ser,
     ) -> Result<Ser::Ok, Ser::Error>
     where
-        T: 'a + IdOrdItem + Serialize,
-        T::Key<'a>: Serialize,
+        T: IdOrdItem + Serialize,
+        Feed<'a, T::Key>: Serialize,
         Ser: Serializer,
     {
         let mut ser_map = serializer.serialize_map(Some(map.len()))?;
@@ -238,9 +239,7 @@ impl<T> IdOrdMapAsMap<T> {
             // * We only use key within the scope of this block before
             //   immediately dropping it. In particular, ser_map.serialize_entry
             //   serializes the key without holding a reference to it.
-            let key1 = unsafe {
-                core::mem::transmute::<T::Key<'_>, T::Key<'a>>(item.key())
-            };
+            let key1 = item.key();
             ser_map.serialize_entry(&key1, item)?;
         }
         ser_map.end()

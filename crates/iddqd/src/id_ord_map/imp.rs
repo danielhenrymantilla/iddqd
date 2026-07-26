@@ -3,12 +3,12 @@ use super::{
     VacantEntry, tables::IdOrdMapTables,
 };
 use crate::{
+    Feed, ForLt,
     errors::DuplicateItem,
     internal::{ValidateChaos, ValidateCompact, ValidationError},
     support::{
         ItemIndex,
         alloc::{Global, global_alloc},
-        borrow::DormantMutRef,
         item_set::ItemSet,
         map_hash::MapHash,
     },
@@ -29,7 +29,7 @@ use equivalent::{Comparable, Equivalent};
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
 ///
 /// // Define a struct with a key.
 /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -41,9 +41,9 @@ use equivalent::{Comparable, Equivalent};
 /// // Implement IdOrdItem for the struct.
 /// impl IdOrdItem for MyItem {
 ///     // Keys can borrow from the item.
-///     type Key<'a> = &'a str;
+///     type Key = ForLt![<'a> = &'a str];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///
@@ -83,7 +83,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -92,9 +92,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -117,7 +117,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -126,9 +126,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -151,7 +151,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -160,9 +160,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -185,7 +185,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -194,9 +194,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -251,7 +251,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -260,9 +260,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -285,7 +285,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -294,9 +294,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -320,7 +320,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -329,9 +329,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -376,7 +376,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -385,8 +385,8 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -411,7 +411,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -420,8 +420,8 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -468,7 +468,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -477,8 +477,8 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -509,7 +509,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -518,9 +518,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -557,7 +557,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -566,9 +566,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -593,7 +593,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     #[inline]
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T>
     where
-        T::Key<'a>: Hash,
+        for<'b> Feed<'b, T::Key>: Hash,
     {
         IterMut::new(&mut self.items, &self.tables)
     }
@@ -671,7 +671,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -680,9 +680,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -718,7 +718,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -727,9 +727,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -773,7 +773,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -782,9 +782,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -799,7 +799,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn contains_key<'a, Q>(&'a self, key: &Q) -> bool
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
+        Q: ?Sized + Comparable<Feed<'a, T::Key>>,
     {
         self.find_index(key).is_some()
     }
@@ -809,7 +809,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -818,9 +818,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -835,7 +835,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn get<'a, Q>(&'a self, key: &Q) -> Option<&'a T>
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
+        Q: ?Sized + Comparable<Feed<'a, T::Key>>,
     {
         self.find(key)
     }
@@ -845,7 +845,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -854,9 +854,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -874,27 +874,13 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn get_mut<'a, Q>(&'a mut self, key: &Q) -> Option<RefMut<'a, T>>
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
-        T::Key<'a>: Hash,
+        Q: ?Sized + for<'local> Comparable<Feed<'local, T::Key>>,
+        T::Key: for<'b> ForLt<Of<'b>: Hash>,
     {
-        let (dormant_map, index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let index = map.find_index(key)?;
-            (dormant_map, index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-        let item = &mut awakened_map.items[index];
-        let state = awakened_map.tables.state().clone();
-        let (hash, dormant) = {
-            let (item, dormant) = DormantMutRef::new(item);
-            let hash = awakened_map.tables.make_hash(item);
-            (hash, dormant)
-        };
-
-        // SAFETY: the original item is not used after this point.
-        let item = unsafe { dormant.awaken() };
+        let index = self.find_index(key)?;
+        let item = &mut self.items[index];
+        let state = self.tables.state().clone();
+        let hash = self.tables.make_hash(item);
         Some(RefMut::new(state, hash, item))
     }
 
@@ -903,7 +889,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -912,9 +898,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -934,17 +920,10 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn remove<'a, Q>(&'a mut self, key: &Q) -> Option<T>
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
+        Q: ?Sized + for<'b> Comparable<Feed<'b, T::Key>>,
     {
-        let (dormant_map, remove_index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let remove_index = map.find_index(key)?;
-            (dormant_map, remove_index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-        awakened_map.remove_by_index(remove_index)
+        let remove_index = self.find_index(key)?;
+        self.remove_by_index(remove_index)
     }
 
     /// Retrieves an entry by its `key`.
@@ -955,7 +934,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_ord_map, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_ord_map, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -964,9 +943,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -993,7 +972,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     ///
     /// assert_eq!(map.get("foo").unwrap().value, 99);
     /// ```
-    pub fn entry<'a>(&'a mut self, key: T::Key<'_>) -> Entry<'a, T> {
+    pub fn entry<'a>(&'a mut self, key: Feed<'_, T::Key>) -> Entry<'a, T> {
         // Why does this always take an owned key? Well, it would seem like we
         // should be able to pass in any Q that is equivalent. That results in
         // *this* code compiling fine, but callers have trouble using it because
@@ -1001,34 +980,30 @@ impl<T: IdOrdItem> IdOrdMap<T> {
         // rather than a shorter lifetime.
         //
         // By accepting owned keys, we can use the upcast functions to convert
-        // them to a shorter lifetime (so this function accepts T::Key<'_>
-        // rather than T::Key<'a>).
+        // them to a shorter lifetime (so this function accepts `Feed<'_, T::Key>`
+        // rather than `Feed<'a, T::Key>`).
         //
         // Really, the solution here is to allow GATs to require covariant
         // parameters. If that were allowed, the borrow checker should be able
         // to figure out that keys don't need to be borrowed for the full 'a,
         // just for some shorter lifetime.
-        let (map, dormant_map) = DormantMutRef::new(self);
+        //
+        // TODO(Daniel): we should explore this limitation, it may be avoidable
+        // through carefully crafted usage of `for<>`.
         let key = T::upcast_key(key);
         {
             // index is explicitly typed to show that it has a trivial Drop impl
             // that doesn't capture anything from map.
-            let index: Option<ItemIndex> = map
+            let index: Option<ItemIndex> = self
                 .tables
                 .key_to_item
-                .find_index(&key, |index| map.items[index].key());
+                .find_index(&key, |index| self.items[index].key());
             if let Some(index) = index {
                 drop(key);
-                return Entry::Occupied(
-                    // SAFETY: `map` is not used after this point.
-                    unsafe { OccupiedEntry::new(dormant_map, index) },
-                );
+                return Entry::Occupied(OccupiedEntry::new(self, index));
             }
         }
-        Entry::Vacant(
-            // SAFETY: `map` is not used after this point.
-            unsafe { VacantEntry::new(dormant_map) },
-        )
+        Entry::Vacant(VacantEntry::new(self))
     }
 
     /// Returns the first item in the map. The key of this item is the minimum
@@ -1037,7 +1012,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1046,9 +1021,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1080,7 +1055,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1089,9 +1064,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1112,12 +1087,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, T>> {
         let index = self.tables.key_to_item.first()?;
-        let (_, dormant_map) = DormantMutRef::new(self);
-        Some(
-            // SAFETY: `map` is dropped immediately while creating the
-            // DormantMutRef.
-            unsafe { OccupiedEntry::new(dormant_map, index) },
-        )
+        Some(OccupiedEntry::new(self, index))
     }
 
     /// Removes and returns the first element in the map. The key of this
@@ -1126,7 +1096,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1135,9 +1105,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1174,7 +1144,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1183,9 +1153,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1217,7 +1187,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1226,9 +1196,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1249,12 +1219,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// ```
     pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, T>> {
         let index = self.tables.key_to_item.last()?;
-        let (_, dormant_map) = DormantMutRef::new(self);
-        Some(
-            // SAFETY: `map` is dropped immediately while creating the
-            // DormantMutRef.
-            unsafe { OccupiedEntry::new(dormant_map, index) },
-        )
+        Some(OccupiedEntry::new(self, index))
     }
 
     /// Removes and returns the last element in the map. The key of this
@@ -1263,7 +1228,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1272,9 +1237,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1313,7 +1278,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+    /// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
     /// struct Item {
@@ -1322,9 +1287,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     /// }
     ///
     /// impl IdOrdItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1347,10 +1312,9 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     pub fn retain<'a, F>(&'a mut self, mut f: F)
     where
         F: for<'b> FnMut(RefMut<'b, T>) -> bool,
-        T::Key<'a>: Hash,
+        for<'b> Feed<'b, T::Key>: Hash,
     {
         let hash_state = self.tables.state().clone();
-        let (_, mut dormant_items) = DormantMutRef::new(&mut self.items);
         let mut removed_item = None;
 
         self.tables.key_to_item.retain(|index| {
@@ -1365,50 +1329,25 @@ impl<T: IdOrdItem> IdOrdMap<T> {
             // `items`.
             drop(removed_item.take());
 
-            let (item, dormant_items) = {
-                // SAFETY: All uses of `items` ended in the previous iteration.
-                let items = unsafe { dormant_items.reborrow() };
-                let (items, dormant_items) = DormantMutRef::new(items);
-                let item: &'a mut T = items
-                    .get_mut(index)
-                    .expect("all indexes are present in self.items");
-                (item, dormant_items)
+            let item: &mut T = self
+                .items
+                .get_mut(index)
+                .expect("all indexes are present in self.items");
+            let key = T::key(item);
+            let hash = MapHash::new(hash_state.hash_one(key));
+
+            let _should_retain @ false =
+                f(RefMut::new(hash_state.clone(), hash, item))
+            else {
+                return true;
             };
 
-            let (hash, dormant_item) = {
-                let (item, dormant_item): (&'a mut T, _) =
-                    DormantMutRef::new(item);
-                // Use T::key(item) rather than item.key() to force the key
-                // trait function to be called for T rather than &mut T.
-                let key = T::key(item);
-                let hash = hash_state.hash_one(key);
-                (MapHash::new(hash), dormant_item)
-            };
-
-            let retain = {
-                // SAFETY: The original item is no longer used after the second
-                // block above. dormant_items, from which item is derived, is
-                // currently dormant.
-                let item = unsafe { dormant_item.awaken() };
-
-                let ref_mut = RefMut::new(hash_state.clone(), hash, item);
-                f(ref_mut)
-            };
-
-            if retain {
-                true
-            } else {
-                // SAFETY: The original items is no longer used after the first
-                // block above, and item + dormant_item have been dropped after
-                // being used above.
-                let items = unsafe { dormant_items.awaken() };
-                removed_item = Some(
-                    items
-                        .remove(index)
-                        .expect("all indexes are present in self.items"),
-                );
-                false
-            }
+            removed_item = Some(
+                self.items
+                    .remove(index)
+                    .expect("all indexes are present in self.items"),
+            );
+            false
         });
 
         // Anything in `removed_item` is implicitly dropped now.
@@ -1416,14 +1355,14 @@ impl<T: IdOrdItem> IdOrdMap<T> {
 
     fn find<'a, Q>(&'a self, k: &Q) -> Option<&'a T>
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
+        Q: ?Sized + Comparable<Feed<'a, T::Key>>,
     {
         self.find_index(k).map(|ix| &self.items[ix])
     }
 
     fn linear_search_index<'a, Q>(&'a self, k: &Q) -> Option<ItemIndex>
     where
-        Q: ?Sized + Ord + Equivalent<T::Key<'a>>,
+        Q: ?Sized + Ord + Equivalent<Feed<'a, T::Key>>,
     {
         self.items.iter().find_map(|(index, item)| {
             (k.equivalent(&item.key())).then_some(index)
@@ -1432,7 +1371,7 @@ impl<T: IdOrdItem> IdOrdMap<T> {
 
     fn find_index<'a, Q>(&'a self, k: &Q) -> Option<ItemIndex>
     where
-        Q: ?Sized + Comparable<T::Key<'a>>,
+        Q: ?Sized + Comparable<Feed<'a, T::Key>>,
     {
         self.tables.key_to_item.find_index(k, |index| self.items[index].key())
     }
@@ -1441,23 +1380,16 @@ impl<T: IdOrdItem> IdOrdMap<T> {
         self.items.get(index)
     }
 
-    pub(super) fn get_by_index_mut<'a>(
-        &'a mut self,
+    pub(super) fn get_by_index_mut<'map>(
+        &'map mut self,
         index: ItemIndex,
-    ) -> Option<RefMut<'a, T>>
+    ) -> Option<RefMut<'map, T>>
     where
-        T::Key<'a>: Hash,
+        for<'local> Feed<'local, T::Key>: Hash,
     {
         let state = self.tables.state().clone();
-        let (hash, dormant) = {
-            let item: &'a mut T = self.items.get_mut(index)?;
-            let (item, dormant) = DormantMutRef::new(item);
-            let hash = self.tables.make_hash(item);
-            (hash, dormant)
-        };
-
-        // SAFETY: item is no longer used after the above point.
-        let item = unsafe { dormant.awaken() };
+        let item: &'map mut T = self.items.get_mut(index)?;
+        let hash = self.tables.make_hash(item);
         Some(RefMut::new(state, hash, item))
     }
 
@@ -1585,31 +1517,16 @@ impl<T: IdOrdItem> IdOrdMap<T> {
     }
 }
 
-impl<'a, T: IdOrdItem> fmt::Debug for IdOrdMap<T>
+impl<T: IdOrdItem> fmt::Debug for IdOrdMap<T>
 where
     T: fmt::Debug,
-    T::Key<'a>: fmt::Debug,
-    T: 'a,
+    T::Key: for<'a> ForLt<Of<'a>: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut map = f.debug_map();
 
         for item in self.iter() {
             let key = item.key();
-
-            // SAFETY:
-            //
-            // * Lifetime extension: for a type T and two lifetime params 'a and
-            //   'b, T<'a> and T<'b> aren't guaranteed to have the same layout,
-            //   but (a) that is true today and (b) it would be shocking and
-            //   break half the Rust ecosystem if that were to change in the
-            //   future.
-            // * We only use key within the scope of this block before immediately
-            //   dropping it. In particular, map.entry calls key.fmt() without
-            //   holding a reference to it.
-            let key: T::Key<'a> =
-                unsafe { core::mem::transmute::<T::Key<'_>, T::Key<'a>>(key) };
-
             map.entry(&key, &item);
         }
         map.finish()
@@ -1667,7 +1584,7 @@ impl<'a, T: IdOrdItem> IntoIterator for &'a IdOrdMap<T> {
 
 impl<'a, T: IdOrdItem> IntoIterator for &'a mut IdOrdMap<T>
 where
-    T::Key<'a>: Hash,
+    T::Key: for<'b> ForLt<Of<'b>: Hash>,
 {
     type Item = RefMut<'a, T>;
     type IntoIter = IterMut<'a, T>;
@@ -1696,7 +1613,7 @@ impl<T: IdOrdItem> IntoIterator for IdOrdMap<T> {
 /// # Examples
 ///
 /// ```
-/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 /// struct Item {
@@ -1705,9 +1622,9 @@ impl<T: IdOrdItem> IntoIterator for IdOrdMap<T> {
 /// }
 ///
 /// impl IdOrdItem for Item {
-///     type Key<'a> = &'a str;
+///     type Key = ForLt![<'a> = &'a str];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///

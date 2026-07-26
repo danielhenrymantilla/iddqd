@@ -1,5 +1,5 @@
 use super::IdOrdItem;
-use crate::support::map_hash::MapHash;
+use crate::{Feed, ForLt, support::map_hash::MapHash};
 use core::{
     fmt,
     hash::Hash,
@@ -46,14 +46,14 @@ use core::{
 /// [birthday problem]: https://en.wikipedia.org/wiki/Birthday_problem#Probability_table
 pub struct RefMut<'a, T: IdOrdItem>
 where
-    T::Key<'a>: Hash,
+    Feed<'a, T::Key>: Hash,
 {
     inner: Option<RefMutInner<'a, T>>,
 }
 
 impl<'a, T: IdOrdItem> RefMut<'a, T>
 where
-    T::Key<'a>: Hash,
+    Feed<'a, T::Key>: Hash,
 {
     pub(super) fn new(
         state: foldhash::fast::FixedState,
@@ -84,7 +84,7 @@ impl<'a, T: for<'k> IdOrdItemMut<'k>> RefMut<'a, T> {
 
 impl<'a, T: IdOrdItem> Drop for RefMut<'a, T>
 where
-    T::Key<'a>: Hash,
+    Feed<'a, T::Key>: Hash,
 {
     fn drop(&mut self) {
         if let Some(inner) = self.inner.take() {
@@ -95,7 +95,7 @@ where
 
 impl<'a, T: IdOrdItem> Deref for RefMut<'a, T>
 where
-    T::Key<'a>: Hash,
+    Feed<'a, T::Key>: Hash,
 {
     type Target = T;
 
@@ -106,7 +106,7 @@ where
 
 impl<'a, T: IdOrdItem> DerefMut for RefMut<'a, T>
 where
-    T::Key<'a>: Hash,
+    Feed<'a, T::Key>: Hash,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.as_mut().unwrap().borrowed
@@ -115,7 +115,7 @@ where
 
 impl<'a, T: IdOrdItem + fmt::Debug> fmt::Debug for RefMut<'a, T>
 where
-    T::Key<'a>: Hash,
+    Feed<'a, T::Key>: Hash,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.inner {
@@ -135,18 +135,13 @@ struct RefMutInner<'a, T: IdOrdItem> {
 
 impl<'a, T: IdOrdItem> RefMutInner<'a, T>
 where
-    T::Key<'a>: Hash,
+    Feed<'a, T::Key>: Hash,
 {
     fn into_ref(self) -> &'a T {
-        let key: T::Key<'_> = self.borrowed.key();
-        // SAFETY: The key is borrowed, then dropped immediately. T is valid for
-        // 'a so T::Key is valid for 'a.
-        let key: T::Key<'a> =
-            unsafe { std::mem::transmute::<T::Key<'_>, T::Key<'a>>(key) };
+        let key: Feed<'a, T::Key> = (*self.borrowed).key();
         if !self.hash.is_same_hash(&self.state, &key) {
             panic!("key changed during RefMut borrow");
         }
-
         self.borrowed
     }
 }
@@ -166,6 +161,9 @@ impl<T: IdOrdItem + fmt::Debug> fmt::Debug for RefMutInner<'_, T> {
 /// This is automatically implemented whenever `T::Key` implements [`Hash`].
 ///
 /// [`IdOrdMap`]: crate::IdOrdMap
-pub trait IdOrdItemMut<'a>: IdOrdItem<Key<'a>: Hash> + 'a {}
+pub trait IdOrdItemMut<'a>: IdOrdItem<Key: ForLt<Of<'a>: Hash>> + 'a {}
 
-impl<'a, T> IdOrdItemMut<'a> for T where T: 'a + IdOrdItem<Key<'a>: Hash> {}
+impl<'a, T> IdOrdItemMut<'a> for T where
+    T: 'a + IdOrdItem<Key: ForLt<Of<'a>: Hash>>
+{
+}

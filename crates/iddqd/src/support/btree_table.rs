@@ -5,22 +5,22 @@
 //! comparator.
 
 use super::{ItemIndex, item_set::IndexRemap, map_hash::MapHash};
-use crate::internal::{
-    TableValidationError, ValidateCompact, table_validation_fail,
+use crate::{
+    ForLt,
+    internal::{TableValidationError, ValidateCompact, table_validation_fail},
 };
 use alloc::{
     collections::{BTreeMap, btree_map},
     vec::Vec,
 };
 use core::{
-    cell::Cell,
     cmp::Ordering,
     hash::{BuildHasher, Hash},
-    marker::PhantomData,
+    ptr,
 };
 use equivalent::Comparable;
 
-thread_local! {
+super::scoped_tls! {
     /// Stores an external comparator function to provide dynamic scoping.
     ///
     /// std's BTreeMap doesn't allow passing an external comparator, so we make
@@ -28,19 +28,24 @@ thread_local! {
     ///
     /// This works by:
     ///
-    /// * We store an `Index` in the BTreeMap which knows how to call this
-    ///   dynamic comparator.
-    /// * When we need to compare two `Index` values, we create a CmpDropGuard.
-    ///   This struct is responsible for managing the lifetime of the
-    ///   comparator.
-    /// * When the CmpDropGuard is dropped (including due to a panic), we reset
-    ///   the comparator to None.
+    ///  1. storing an `Index` in the BTreeMap,
+    ///
+    ///  1. then, when we need to compare two `Index` values, we call
+    ///   <code>[CMP].[with_value()][with_value]</code> to *safely* set it to
+    ///   a scoped arbitrary `dyn Fn` comparator;
+    ///
+    ///  1. the `Index` in the map knows how to call this dynamic comparator: it does
+    ///     <code>[CMP].[get_with()][get_with]</code>.
+    ///
+    /// [get_with]: `super::scoped_tls::ScopedTls::get_with`
+    /// [with_value]: `super::scoped_tls::ScopedTls::with_value`
     ///
     /// Comparators take `&Index` rather than `Index` by value because `Index`
     /// wraps `IndexCell` (an `AtomicU32` newtype) for in-place mutation in
     /// `remap_indexes`, and `AtomicU32` isn't `Copy`.
     ///
     /// This is not great! (For one, thread-locals and no-std don't really mix.)
+    ///
     /// Some alternatives:
     ///
     /// * Using `Borrow` as described in
@@ -54,11 +59,12 @@ thread_local! {
     /// * Using a third-party BTreeMap implementation that allows passing in
     ///   external comparators. As of 2025-05, there appear to be two options:
     ///
-    ///   1. copse (https://docs.rs/copse), which doesn't seem like a good fit
-    ///      here.
-    ///   2. btree_monstrousity (https://crates.io/crates/btree_monstrousity),
-    ///      which has an API perfect for this but is, uhh, not really
-    ///      production-ready.
+    ///     - `::copse` (https://docs.rs/copse), which doesn't seem like a good fit
+    ///       here.
+    ///
+    ///     - `::btree_monstrousity` (https://docs.rs/btree_monstrousity),
+    ///       which has an API perfect for this but is, uhh, not really
+    ///       production-ready.
     ///
     ///   Third-party implementations also run the risk of being relatively
     ///   untested.
@@ -67,12 +73,8 @@ thread_local! {
     ///   default choice to balance cache locality, but other options are worth
     ///   benchmarking. We do need to provide a comparator, though, so radix
     ///   trees and such are out of the question.
-    static CMP: Cell<Option<&'static IndexCmp<'static>>>
-        = const { Cell::new(None) };
+    static CMP: dyn 'scoped + Fn(&Index, &Index) -> Ordering;
 }
-
-/// External comparator type used via `CMP`'s dynamic scoping.
-type IndexCmp<'a> = dyn Fn(&Index, &Index) -> Ordering + 'a;
 
 /// A B-tree-based table with an external comparator.
 #[derive(Clone, Debug, Default)]
@@ -188,24 +190,18 @@ impl MapBTreeTable {
         Q: ?Sized + Comparable<K>,
         F: Fn(ItemIndex) -> K,
     {
-        let f = find_cmp(key, lookup);
-
-        let guard = CmpDropGuard::new(&f);
-
-        let ret = match self.items.get_key_value(&Index::sentinel()) {
-            Some((ix, ())) if ix.value() == Index::SENTINEL_VALUE => {
-                panic!("internal map shouldn't store sentinel value")
+        CMP.with_value(&find_cmp(key, lookup), || {
+            match self.items.get_key_value(&Index::sentinel()) {
+                Some((ix, ())) if ix.value() == Index::SENTINEL_VALUE => {
+                    panic!("internal map shouldn't store sentinel value")
+                }
+                Some((ix, ())) => Some(ix.value()),
+                None => {
+                    // The key is not in the table.
+                    None
+                }
             }
-            Some((ix, ())) => Some(ix.value()),
-            None => {
-                // The key is not in the table.
-                None
-            }
-        };
-
-        // drop(guard) isn't necessary, but we make it explicit
-        drop(guard);
-        ret
+        })
     }
 
     pub(crate) fn prepare_insert<K, Q, F>(
@@ -219,18 +215,14 @@ impl MapBTreeTable {
         Q: ?Sized + Comparable<K>,
         F: Fn(ItemIndex) -> K,
     {
-        let f = insert_cmp(index, key, lookup);
-        let guard = CmpDropGuard::new(&f);
-
-        let entry = match self.items.entry(Index::new(index)) {
-            btree_map::Entry::Vacant(entry) => entry,
-            btree_map::Entry::Occupied(_) => {
-                panic!("internal map already contains index {index}")
+        let entry = CMP.with_value(&insert_cmp(index, key, lookup), || {
+            match self.items.entry(Index::new(index)) {
+                btree_map::Entry::Vacant(entry) => entry,
+                btree_map::Entry::Occupied(_) => {
+                    panic!("internal map already contains index {index}")
+                }
             }
-        };
-
-        // drop(guard) isn't necessary, but we make it explicit
-        drop(guard);
+        });
 
         PreparedBTreeInsert { entry }
     }
@@ -244,13 +236,11 @@ impl MapBTreeTable {
     where
         F: Fn(ItemIndex) -> K,
         K: Ord,
+        K: Comparable<K>,
     {
-        let f = insert_cmp(index, key, lookup);
-        let guard = CmpDropGuard::new(&f);
-        let entry = self.items.entry(Index::new(index));
-
-        // drop(guard) isn't necessary, but we make it explicit
-        drop(guard);
+        let entry = CMP.with_value(&insert_cmp(index, key, lookup), || {
+            self.items.entry(Index::new(index))
+        });
 
         match entry {
             btree_map::Entry::Vacant(_) => {
@@ -411,13 +401,10 @@ impl PreparedBTreeRemove<'_> {
     }
 }
 
-fn find_cmp<'a, K, Q, F>(
-    key: &'a Q,
-    lookup: F,
-) -> impl Fn(&Index, &Index) -> Ordering + 'a
+fn find_cmp<K, Q, F>(key: &Q, lookup: F) -> impl Fn(&Index, &Index) -> Ordering
 where
     Q: ?Sized + Comparable<K>,
-    F: 'a + Fn(ItemIndex) -> K,
+    F: Fn(ItemIndex) -> K,
     K: Ord,
 {
     move |a: &Index, b: &Index| {
@@ -442,14 +429,14 @@ where
     }
 }
 
-fn insert_cmp<'a, K, Q, F>(
+fn insert_cmp<K, Q, F>(
     index: ItemIndex,
-    key: &'a Q,
+    key: &Q,
     lookup: F,
-) -> impl Fn(&Index, &Index) -> Ordering + 'a
+) -> impl Fn(&Index, &Index) -> Ordering
 where
     Q: ?Sized + Comparable<K>,
-    F: 'a + Fn(ItemIndex) -> K,
+    F: Fn(ItemIndex) -> K,
     K: Ord,
 {
     move |a: &Index, b: &Index| {
@@ -481,35 +468,6 @@ where
             }
             (a, b) => lookup(a).cmp(&lookup(b)).then_with(|| a.cmp(&b)),
         }
-    }
-}
-
-struct CmpDropGuard<'a> {
-    _marker: PhantomData<&'a ()>,
-}
-
-impl<'a> CmpDropGuard<'a> {
-    fn new(f: &'a IndexCmp<'a>) -> Self {
-        // CMP lasts only as long as this function and is immediately reset to
-        // None once this scope is left.
-        let ret = Self { _marker: PhantomData };
-
-        // SAFETY: This is safe because we are not storing the reference
-        // anywhere, and it is only used for the lifetime of this CmpDropGuard.
-        let as_static = unsafe {
-            std::mem::transmute::<&'a IndexCmp<'a>, &'static IndexCmp<'static>>(
-                f,
-            )
-        };
-        CMP.set(Some(as_static));
-
-        ret
-    }
-}
-
-impl Drop for CmpDropGuard<'_> {
-    fn drop(&mut self) {
-        CMP.set(None);
     }
 }
 
@@ -614,10 +572,7 @@ impl PartialEq for Index {
 
         // If any of the two indexes is the sentinel, we're required to perform
         // a lookup.
-        CMP.with(|cmp| {
-            let cmp = cmp.get().expect("cmp should be set");
-            cmp(self, other) == Ordering::Equal
-        })
+        Self::cmp(self, other) == Ordering::Equal
     }
 }
 
@@ -628,8 +583,8 @@ impl Ord for Index {
     fn cmp(&self, other: &Self) -> Ordering {
         // Ord should only be called if we're doing lookups within the table,
         // which should have set the thread local.
-        CMP.with(|cmp| {
-            let cmp = cmp.get().expect("cmp should be set");
+        CMP.get_with(|cmp| {
+            let cmp = cmp.expect("cmp should be set");
             cmp(self, other)
         })
     }
@@ -644,6 +599,8 @@ impl PartialOrd for Index {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
+    use iddqd_derive::Equivalent;
+
     use super::*;
     use crate::support::{alloc::Global, item_set::ItemSet};
     use core::cell::Cell;
@@ -659,7 +616,7 @@ mod tests {
     }
 
     /// A key type whose `Ord` impl can be made to panic on demand.
-    #[derive(Clone, Debug, PartialEq, Eq)]
+    #[derive(Clone, Debug, PartialEq, Eq, Equivalent, Comparable)]
     struct PanickingKey(u32);
 
     impl PartialOrd for PanickingKey {
@@ -679,7 +636,7 @@ mod tests {
 
     /// A key type whose `Ord` impl can be told to return a fixed ordering on
     /// every call, to simulate adversarial user comparators.
-    #[derive(Clone, Debug, PartialEq, Eq)]
+    #[derive(Clone, Debug, PartialEq, Eq, Equivalent, Comparable)]
     struct LyingKey(u32);
 
     impl PartialOrd for LyingKey {

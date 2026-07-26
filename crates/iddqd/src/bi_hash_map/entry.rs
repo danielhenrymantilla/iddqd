@@ -3,7 +3,6 @@ use crate::{
     DefaultHashBuilder,
     support::{
         alloc::{Allocator, Global},
-        borrow::DormantMutRef,
         map_hash::MapHash,
     },
 };
@@ -45,7 +44,7 @@ use core::{fmt, hash::BuildHasher};
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast};
+/// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug, PartialEq, Eq)]
 /// struct Item {
@@ -55,13 +54,13 @@ use core::{fmt, hash::BuildHasher};
 /// }
 ///
 /// impl BiHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
 ///     bi_upcast!();
@@ -224,7 +223,7 @@ pub struct VacantEntry<
     S = DefaultHashBuilder,
     A: Allocator = Global,
 > {
-    map: DormantMutRef<'a, BiHashMap<T, S, A>>,
+    map: &'a mut BiHashMap<T, S, A>,
     hashes: [MapHash; 2],
 }
 
@@ -241,8 +240,8 @@ impl<'a, T: BiHashItem, S, A: Allocator> fmt::Debug
 impl<'a, T: BiHashItem, S: Clone + BuildHasher, A: Allocator>
     VacantEntry<'a, T, S, A>
 {
-    pub(super) unsafe fn new(
-        map: DormantMutRef<'a, BiHashMap<T, S, A>>,
+    pub(super) fn new(
+        map: &'a mut BiHashMap<T, S, A>,
         hashes: [MapHash; 2],
     ) -> Self {
         VacantEntry { map, hashes }
@@ -251,9 +250,23 @@ impl<'a, T: BiHashItem, S: Clone + BuildHasher, A: Allocator>
     /// Sets the entry to a new value, returning a mutable reference to the
     /// value.
     pub fn insert(self, value: T) -> RefMut<'a, T, S> {
-        // SAFETY: The safety assumption behind `Self::new` guarantees that the
-        // original reference to the map is not used at this point.
-        let map = unsafe { self.map.awaken() };
+        let state = &self.map.tables.state;
+        if !self.hashes[0].is_same_hash(state, value.key1()) {
+            panic!("key1 hashes do not match");
+        }
+        if !self.hashes[1].is_same_hash(state, value.key2()) {
+            panic!("key2 hashes do not match");
+        }
+        let Ok(index) = self.map.insert_unique_impl(value) else {
+            panic!("key already present in map");
+        };
+        self.map.get_by_index_mut(index).expect("index is known to be valid")
+    }
+
+    /// Sets the value of the entry, and returns an `OccupiedEntry`.
+    #[inline]
+    pub fn insert_entry(self, value: T) -> OccupiedEntry<'a, T, S, A> {
+        let map = self.map;
         let state = &map.tables.state;
         if !self.hashes[0].is_same_hash(state, value.key1()) {
             panic!("key1 hashes do not match");
@@ -264,32 +277,7 @@ impl<'a, T: BiHashItem, S: Clone + BuildHasher, A: Allocator>
         let Ok(index) = map.insert_unique_impl(value) else {
             panic!("key already present in map");
         };
-        map.get_by_index_mut(index).expect("index is known to be valid")
-    }
-
-    /// Sets the value of the entry, and returns an `OccupiedEntry`.
-    #[inline]
-    pub fn insert_entry(mut self, value: T) -> OccupiedEntry<'a, T, S, A> {
-        let index = {
-            // SAFETY: The safety assumption behind `Self::new` guarantees that the
-            // original reference to the map is not used at this point.
-            let map = unsafe { self.map.reborrow() };
-            let state = &map.tables.state;
-            if !self.hashes[0].is_same_hash(state, value.key1()) {
-                panic!("key1 hashes do not match");
-            }
-            if !self.hashes[1].is_same_hash(state, value.key2()) {
-                panic!("key2 hashes do not match");
-            }
-            let Ok(index) = map.insert_unique_impl(value) else {
-                panic!("key already present in map");
-            };
-            index
-        };
-
-        // SAFETY: map, as well as anything that was borrowed from it, is
-        // dropped once the above block exits.
-        unsafe { OccupiedEntry::new(self.map, EntryIndexes::Unique(index)) }
+        OccupiedEntry::new(map, EntryIndexes::Unique(index))
     }
 }
 
@@ -301,7 +289,7 @@ pub struct OccupiedEntry<
     S = DefaultHashBuilder,
     A: Allocator = Global,
 > {
-    map: DormantMutRef<'a, BiHashMap<T, S, A>>,
+    map: &'a mut BiHashMap<T, S, A>,
     indexes: EntryIndexes,
 }
 
@@ -322,8 +310,8 @@ impl<'a, T: BiHashItem, S: Clone + BuildHasher, A: Allocator>
     ///
     /// After self is created, the original reference created by
     /// `DormantMutRef::new` must not be used.
-    pub(super) unsafe fn new(
-        map: DormantMutRef<'a, BiHashMap<T, S, A>>,
+    pub(super) fn new(
+        map: &'a mut BiHashMap<T, S, A>,
         indexes: EntryIndexes,
     ) -> Self {
         OccupiedEntry { map, indexes }
@@ -350,10 +338,7 @@ impl<'a, T: BiHashItem, S: Clone + BuildHasher, A: Allocator>
     /// If you need a reference to `T` that may outlive the destruction of the
     /// `Entry` value, see [`into_ref`](Self::into_ref).
     pub fn get(&self) -> OccupiedEntryRef<'_, T> {
-        // SAFETY: The safety assumption behind `Self::new` guarantees that the
-        // original reference to the map is not used at this point.
-        let map = unsafe { self.map.reborrow_shared() };
-        map.get_by_entry_index(self.indexes)
+        self.map.get_by_entry_index(self.indexes)
     }
 
     /// Returns mutable references to values that match the provided keys.
@@ -361,10 +346,7 @@ impl<'a, T: BiHashItem, S: Clone + BuildHasher, A: Allocator>
     /// If you need a reference to `T` that may outlive the destruction of the
     /// `Entry` value, see [`into_mut`](Self::into_mut).
     pub fn get_mut(&mut self) -> OccupiedEntryMut<'_, T, S> {
-        // SAFETY: The safety assumption behind `Self::new` guarantees that the
-        // original reference to the map is not used at this point.
-        let map = unsafe { self.map.reborrow() };
-        map.get_by_entry_index_mut(self.indexes)
+        self.map.get_by_entry_index_mut(self.indexes)
     }
 
     /// Converts self into shared references to items that match the provided
@@ -373,10 +355,7 @@ impl<'a, T: BiHashItem, S: Clone + BuildHasher, A: Allocator>
     /// If you need multiple references to the `OccupiedEntry`, see
     /// [`get`](Self::get).
     pub fn into_ref(self) -> OccupiedEntryRef<'a, T> {
-        // SAFETY: The safety assumption behind `Self::new` guarantees that the
-        // original reference to the map is not used at this point.
-        let map = unsafe { self.map.awaken() };
-        map.get_by_entry_index(self.indexes)
+        self.map.get_by_entry_index(self.indexes)
     }
 
     /// Converts self into mutable references to items that match the provided
@@ -385,10 +364,7 @@ impl<'a, T: BiHashItem, S: Clone + BuildHasher, A: Allocator>
     /// If you need multiple references to the `OccupiedEntry`, see
     /// [`get_mut`](Self::get_mut).
     pub fn into_mut(self) -> OccupiedEntryMut<'a, T, S> {
-        // SAFETY: The safety assumption behind `Self::new` guarantees that the
-        // original reference to the map is not used at this point.
-        let map = unsafe { self.map.awaken() };
-        map.get_by_entry_index_mut(self.indexes)
+        self.map.get_by_entry_index_mut(self.indexes)
     }
 
     /// Sets the entry to a new value, returning all values that conflict.
@@ -397,22 +373,15 @@ impl<'a, T: BiHashItem, S: Clone + BuildHasher, A: Allocator>
     ///
     /// Panics if the passed-in key is different from the key of the entry.
     pub fn insert(&mut self, value: T) -> Vec<T> {
-        // SAFETY: The safety assumption behind `Self::new` guarantees that the
-        // original reference to the map is not used at this point.
-        //
-        // Note that `replace_at_indexes` panics if the keys don't match.
-        let map = unsafe { self.map.reborrow() };
-        let (index, old_items) = map.replace_at_indexes(self.indexes, value);
+        let (index, old_items) =
+            self.map.replace_at_indexes(self.indexes, value);
         self.indexes = EntryIndexes::Unique(index);
         old_items
     }
 
     /// Takes ownership of the values from the map.
-    pub fn remove(mut self) -> Vec<T> {
-        // SAFETY: The safety assumption behind `Self::new` guarantees that the
-        // original reference to the map is not used at this point.
-        let map = unsafe { self.map.reborrow() };
-        map.remove_by_entry_index(self.indexes)
+    pub fn remove(self) -> Vec<T> {
+        self.map.remove_by_entry_index(self.indexes)
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    TriHashItem,
+    Feed, TriHashItem,
     internal::{ValidateCompact, ValidationError},
     support::{
         alloc::{Allocator, Global, global_alloc},
@@ -78,9 +78,9 @@ impl<S: Clone + BuildHasher, A: Allocator> TriHashMapTables<S, A> {
 
     pub(super) fn make_hashes_for_keys<T: TriHashItem>(
         &self,
-        key1: &T::K1<'_>,
-        key2: &T::K2<'_>,
-        key3: &T::K3<'_>,
+        key1: &Feed<'_, T::K1>,
+        key2: &Feed<'_, T::K2>,
+        key3: &Feed<'_, T::K3>,
     ) -> [MapHash; 3] {
         [
             self.k1_to_item.compute_hash(&self.state, key1),

@@ -3,7 +3,7 @@ use crate::hegel_support::{
 };
 use hegel::{TestCase, generators as gs};
 use iddqd::{
-    IdOrdItem, IdOrdMap, id_ord_map, id_upcast,
+    Feed, ForLt, IdOrdItem, IdOrdMap, id_ord_map, id_upcast,
     internal::{ValidateChaos, ValidateCompact},
 };
 use iddqd_test_utils::{
@@ -47,9 +47,9 @@ struct SimpleItem {
 }
 
 impl IdOrdItem for SimpleItem {
-    type Key<'a> = u32;
+    type Key = ForLt![<'a> = u32];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.key
     }
 
@@ -58,7 +58,7 @@ impl IdOrdItem for SimpleItem {
 
 #[test]
 fn debug_impls() {
-    let mut map = IdOrdMap::<SimpleItem>::make_new();
+    let mut map = <IdOrdMap<SimpleItem> as ItemMap<_>>::make_new();
     map.insert_unique(SimpleItem { key: 1 }).unwrap();
     map.insert_unique(SimpleItem { key: 20 }).unwrap();
     map.insert_unique(SimpleItem { key: 10 }).unwrap();
@@ -1035,8 +1035,8 @@ mod macro_tests {
     }
 
     impl IdOrdItem for User {
-        type Key<'a> = u32;
-        fn key(&self) -> Self::Key<'_> {
+        type Key = ForLt![<'a> = u32];
+        fn key(&self) -> u32 {
             self.id
         }
         id_upcast!();
@@ -1124,9 +1124,8 @@ struct PanickyOrdItem {
 }
 
 impl IdOrdItem for PanickyOrdItem {
-    type Key<'a> = iddqd_test_utils::panic_safety::PanickyKey;
-
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = iddqd_test_utils::panic_safety::PanickyKey];
+    fn key(&self) -> Feed<'_, Self::Key> {
         iddqd_test_utils::panic_safety::observe_panicky_call("key");
         iddqd_test_utils::panic_safety::PanickyKey(self.key)
     }
@@ -1143,6 +1142,7 @@ impl Drop for PanickyOrdItem {
 mod proptest_panic_safety {
     use super::*;
     use crate::hegel_support::{MAX_PANIC_KEY, draw_armed};
+    use iddqd::id_ord_map::RefMut;
     use iddqd_test_utils::panic_safety::{
         PanicSafety, PanickyKey, PanickySearchKey,
         assert_panic_fired_as_expected, assert_post_op_invariants,
@@ -1297,7 +1297,10 @@ mod proptest_panic_safety {
                 PanicSafety::StepAtomic,
                 |map| {
                     map.retain(|item| {
-                        let matches = item.key % modulo == rem;
+                        let matches =
+                            <RefMut<_> as ::core::ops::Deref>::deref(&item).key
+                                % modulo
+                                == rem;
                         if keep { matches } else { !matches }
                     });
                 },

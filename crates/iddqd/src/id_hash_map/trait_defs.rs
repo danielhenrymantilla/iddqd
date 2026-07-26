@@ -1,5 +1,5 @@
+use crate::{Feed, ForLtEquivalent};
 use alloc::{boxed::Box, rc::Rc, sync::Arc};
-use core::hash::Hash;
 
 /// An element stored in an [`IdHashMap`].
 ///
@@ -9,7 +9,7 @@ use core::hash::Hash;
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+/// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
 ///
 /// // Define a struct with a key.
 /// #[derive(Debug, PartialEq, Eq, Hash)]
@@ -21,9 +21,9 @@ use core::hash::Hash;
 /// // Implement IdHashItem for the struct.
 /// impl IdHashItem for MyItem {
 ///     // Keys can borrow from the item.
-///     type Key<'a> = &'a str;
+///     type Key = ForLt![<'a> = &'a str];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///
@@ -40,40 +40,32 @@ use core::hash::Hash;
 /// [`IdHashMap`]: crate::IdHashMap
 pub trait IdHashItem {
     /// The key type.
-    type Key<'a>: Eq + Hash
-    where
-        Self: 'a;
+    type Key: ForLtEquivalent;
 
     /// Retrieves the key.
-    fn key(&self) -> Self::Key<'_>;
+    fn key(&self) -> Feed<'_, Self::Key>;
 
     /// Upcasts the key to a shorter lifetime, in effect asserting that the
     /// lifetime `'a` on [`IdHashItem::Key`] is covariant.
     ///
     /// Typically implemented via the [`id_upcast`] macro.
     fn upcast_key<'short, 'long: 'short>(
-        long: Self::Key<'long>,
-    ) -> Self::Key<'short>;
+        long: Feed<'long, Self::Key>,
+    ) -> Feed<'short, Self::Key>;
 }
 
 macro_rules! impl_for_ref {
     ($type:ty) => {
         impl<'b, T: 'b + ?Sized + IdHashItem> IdHashItem for $type {
-            type Key<'a>
-                = T::Key<'a>
-            where
-                Self: 'a;
+            type Key = T::Key;
 
-            fn key(&self) -> Self::Key<'_> {
+            fn key(&self) -> Feed<'_, Self::Key> {
                 (**self).key()
             }
 
             fn upcast_key<'short, 'long: 'short>(
-                long: Self::Key<'long>,
-            ) -> Self::Key<'short>
-            where
-                Self: 'long,
-            {
+                long: Feed<'long, Self::Key>,
+            ) -> Feed<'short, Self::Key> {
                 T::upcast_key(long)
             }
         }
@@ -86,18 +78,15 @@ impl_for_ref!(&'b mut T);
 macro_rules! impl_for_box {
     ($type:ty) => {
         impl<T: ?Sized + IdHashItem> IdHashItem for $type {
-            type Key<'a>
-                = T::Key<'a>
-            where
-                Self: 'a;
+            type Key = T::Key;
 
-            fn key(&self) -> Self::Key<'_> {
+            fn key(&self) -> Feed<'_, Self::Key> {
                 (**self).key()
             }
 
             fn upcast_key<'short, 'long: 'short>(
-                long: Self::Key<'long>,
-            ) -> Self::Key<'short> {
+                long: Feed<'long, Self::Key>,
+            ) -> Feed<'short, Self::Key> {
                 T::upcast_key(long)
             }
         }

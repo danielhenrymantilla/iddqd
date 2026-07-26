@@ -1,5 +1,5 @@
 use crate::{
-    BiHashItem,
+    BiHashItem, Feed,
     internal::{ValidateCompact, ValidationError},
     support::{
         alloc::{Allocator, Global, global_alloc},
@@ -64,8 +64,8 @@ impl<S: Clone + BuildHasher, A: Allocator> BiHashMapTables<S, A> {
 
     pub(super) fn make_hashes<T: BiHashItem>(
         &self,
-        k1: &T::K1<'_>,
-        k2: &T::K2<'_>,
+        k1: &Feed<'_, T::K1>,
+        k2: &Feed<'_, T::K2>,
     ) -> [MapHash; 2] {
         let h1 = self.k1_to_item.compute_hash(&self.state, k1);
         let h2 = self.k2_to_item.compute_hash(&self.state, k2);

@@ -38,7 +38,7 @@ where
 /// # Examples
 ///
 /// ```
-/// use iddqd::{IdOrdItem, IdOrdMap, id_ord_map, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_ord_map, id_upcast, Feed, ForLt};
 /// use proptest::{
 ///     arbitrary::any, strategy::Strategy, test_runner::TestRunner,
 /// };
@@ -50,9 +50,9 @@ where
 /// }
 ///
 /// impl IdOrdItem for Person {
-///     type Key<'a> = u32;
+///     type Key = ForLt![<'a> = u32];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         self.id
 ///     }
 ///     id_upcast!();

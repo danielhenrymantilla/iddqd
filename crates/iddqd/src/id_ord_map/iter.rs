@@ -1,9 +1,11 @@
 use super::{IdOrdItem, RefMut, tables::IdOrdMapTables};
-use crate::support::{
-    alloc::Global,
-    borrow::DormantMutRef,
-    btree_table,
-    item_set::{ConsumingItemSet, ItemSet, ItemSlotsPtr},
+use crate::{
+    Feed, ForLt,
+    support::{
+        alloc::Global,
+        btree_table,
+        item_set::{ConsumingItemSet, ItemSet, ItemSlotsPtr},
+    },
 };
 use core::{hash::Hash, iter::FusedIterator};
 
@@ -59,7 +61,7 @@ impl<T: IdOrdItem> FusedIterator for Iter<'_, T> {}
 #[derive(Debug)]
 pub struct IterMut<'a, T: IdOrdItem>
 where
-    T::Key<'a>: Hash,
+    Feed<'a, T::Key>: Hash,
 {
     items: ItemSlotsPtr<'a, T>,
     tables: &'a IdOrdMapTables,
@@ -68,7 +70,7 @@ where
 
 impl<'a, T: IdOrdItem> IterMut<'a, T>
 where
-    T::Key<'a>: Hash,
+    T::Key: for<'local> ForLt<Of<'local>: Hash>,
 {
     pub(super) fn new(
         items: &'a mut ItemSet<T, Global>,
@@ -84,7 +86,7 @@ where
 
 impl<'a, T: IdOrdItem + 'a> Iterator for IterMut<'a, T>
 where
-    T::Key<'a>: Hash,
+    for<'local> T::Key: ForLt<Of<'local>: Hash>,
 {
     type Item = RefMut<'a, T>;
 
@@ -97,18 +99,7 @@ where
         // `get_mut` hands out across iterations never alias.
         let item: &'a mut T = unsafe { self.items.get_mut(index) };
 
-        let (hash, dormant) = {
-            let (item, dormant) = DormantMutRef::new(item);
-            let hash = self.tables.make_hash(item);
-            (hash, dormant)
-        };
-
-        // SAFETY: The `&mut T` that `DormantMutRef::new` produced inside
-        // the block above (and used for hashing) was dropped when the
-        // block closed, so the dormant ref is now the unique borrow of
-        // the slot. The `self.tables.state()` access below touches a
-        // different allocation and does not alias.
-        let item = unsafe { dormant.awaken() };
+        let hash = self.tables.make_hash(item);
 
         Some(RefMut::new(self.tables.state().clone(), hash, item))
     }
@@ -116,7 +107,7 @@ where
 
 impl<'a, T: IdOrdItem + 'a> ExactSizeIterator for IterMut<'a, T>
 where
-    T::Key<'a>: Hash,
+    for<'local> T::Key: ForLt<Of<'local>: Hash>,
 {
     #[inline]
     fn len(&self) -> usize {
@@ -125,7 +116,7 @@ where
 }
 
 impl<'a, T: IdOrdItem + 'a> FusedIterator for IterMut<'a, T> where
-    T::Key<'a>: Hash
+    for<'local> T::Key: ForLt<Of<'local>: Hash>
 {
 }
 

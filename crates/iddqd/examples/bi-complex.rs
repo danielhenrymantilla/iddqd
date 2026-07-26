@@ -1,6 +1,9 @@
 //! An example demonstrating `BiHashMap` use with complex borrowed keys.
 
-use iddqd::{BiHashItem, BiHashMap, bi_hash_map::Entry, bi_upcast};
+use iddqd::{
+    BiHashItem, BiHashMap, Equivalent, Feed, ForLt, bi_hash_map::Entry,
+    bi_upcast,
+};
 use std::path::{Path, PathBuf};
 
 /// These are the items we'll store in the `BiHashMap`.
@@ -14,28 +17,28 @@ struct MyStruct {
 
 /// The map will be indexed uniquely by (b, c). Note that this is a
 /// borrowed key that can be constructed efficiently.
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Equivalent)]
 struct MyKey1<'a> {
     b: usize,
     c: &'a Path,
 }
 
 /// The map will also be indexed uniquely by (&Path, &[usize]).
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Equivalent)]
 struct MyKey2<'a> {
     c: &'a Path,
     d: &'a [usize],
 }
 
 impl BiHashItem for MyStruct {
-    type K1<'a> = MyKey1<'a>;
-    type K2<'a> = MyKey2<'a>;
+    type K1 = ForLt![<'a> = MyKey1<'a>];
+    type K2 = ForLt![<'a> = MyKey2<'a>];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         MyKey1 { b: self.b, c: &self.c }
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         MyKey2 { c: &self.c, d: &self.d }
     }
 

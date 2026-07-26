@@ -48,7 +48,7 @@ where
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast};
+/// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast, Feed, ForLt};
 /// use proptest::{
 ///     arbitrary::any, strategy::Strategy, test_runner::TestRunner,
 /// };
@@ -60,13 +60,13 @@ where
 /// }
 ///
 /// impl BiHashItem for Person {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.email
 ///     }
 ///     bi_upcast!();
@@ -101,7 +101,7 @@ pub fn prop_strategy<T: Strategy>(
 /// # Examples
 ///
 /// ```
-/// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast};
+/// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast, Feed, ForLt};
 /// use proptest::{
 ///     arbitrary::any, strategy::Strategy, test_runner::TestRunner,
 /// };
@@ -114,13 +114,13 @@ pub fn prop_strategy<T: Strategy>(
 /// }
 ///
 /// impl BiHashItem for Person {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.email
 ///     }
 ///     bi_upcast!();
@@ -160,7 +160,7 @@ pub fn prop_strategy_with_hasher<T: Strategy, S>(
 /// ```
 /// # #[cfg(feature = "allocator-api2")] {
 /// use allocator_api2::alloc::Global;
-/// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast};
+/// use iddqd::{BiHashItem, BiHashMap, bi_hash_map, bi_upcast, Feed, ForLt};
 /// use proptest::{
 ///     arbitrary::any, strategy::Strategy, test_runner::TestRunner,
 /// };
@@ -173,13 +173,13 @@ pub fn prop_strategy_with_hasher<T: Strategy, S>(
 /// }
 ///
 /// impl BiHashItem for Person {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.email
 ///     }
 ///     bi_upcast!();

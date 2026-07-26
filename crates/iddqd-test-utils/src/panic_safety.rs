@@ -26,7 +26,7 @@ use core::{
     fmt,
     hash::{Hash, Hasher},
 };
-use equivalent::{Comparable, Equivalent};
+use iddqd::{Comparable, Equivalent};
 use std::{
     io::Write,
     sync::{Mutex, OnceLock},
@@ -39,7 +39,7 @@ thread_local! {
 
 /// A key whose `Hash`/`Eq`/`Ord`/`Drop` impls share a panic countdown,
 /// so tests can deterministically trigger a panic at a chosen point.
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug, Eq, Comparable, Equivalent)]
 pub struct PanickyKey(pub u32);
 
 pub fn observe_panicky_call(label: &'static str) {

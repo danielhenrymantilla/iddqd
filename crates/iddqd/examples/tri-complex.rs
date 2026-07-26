@@ -1,6 +1,6 @@
 //! An example demonstrating `TriHashMap` use with complex borrowed keys.
 
-use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+use iddqd::{Equivalent, Feed, ForLt, TriHashItem, TriHashMap, tri_upcast};
 use std::path::{Path, PathBuf};
 
 /// These are the items we'll store in the `TriHashMap`.
@@ -14,37 +14,37 @@ struct MyStruct {
 
 /// The map will be indexed uniquely by (usize, &Path). Note that this is a
 /// borrowed key that can be constructed efficiently.
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Equivalent)]
 struct MyKey1<'a> {
     b: usize,
     c: &'a Path,
 }
 
 /// The map will also be indexed uniquely by (&Path, &[usize]).
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Equivalent)]
 struct MyKey2<'a> {
     c: &'a Path,
     d: &'a [usize],
 }
 
 impl TriHashItem for MyStruct {
-    type K1<'a> = MyKey1<'a>;
-    type K2<'a> = MyKey2<'a>;
+    type K1 = ForLt![<'a> = MyKey1<'a>];
+    type K2 = ForLt![<'a> = MyKey2<'a>];
     // And finally, the map will be indexed uniquely by the `a` field, i.e.
     // String. (This could also be a borrowed key like `&'a str`, but we're
     // using String for this example to demonstrate the use of the `Borrow`
     // trait below.)
-    type K3<'a> = String;
+    type K3 = ForLt![<'a> = String];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         MyKey1 { b: self.b, c: &self.c }
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         MyKey2 { c: &self.c, d: &self.d }
     }
 
-    fn key3(&self) -> Self::K3<'_> {
+    fn key3(&self) -> Feed<'_, Self::K3> {
         self.a.clone()
     }
 

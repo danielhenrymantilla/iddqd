@@ -15,7 +15,7 @@ bumpalo = { workspace = true, optional = true }
 camino.workspace = true
 equivalent.workspace = true
 hugealloc = { workspace = true, optional = true }
-iddqd.workspace = true
+iddqd = { workspace = true, features = ["std"] }
 proptest.workspace = true
 serde = { workspace = true, features = ["derive"], optional = true }
 serde_json = { workspace = true, optional = true }

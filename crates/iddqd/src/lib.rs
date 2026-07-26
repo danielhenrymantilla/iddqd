@@ -55,7 +55,7 @@
 //!
 //! ```
 //! # #[cfg(feature = "std")] {
-//! use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+//! use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
 //!
 //! #[derive(Debug)]
 //! struct User {
@@ -66,9 +66,9 @@
 //! // Implement IdOrdItem so the map knows how to get the key from the value.
 //! impl IdOrdItem for User {
 //!     // The key type can borrow from the value.
-//!     type Key<'a> = &'a str;
+//!     type Key = ForLt![<'a> = &'a str];
 //!
-//!     fn key(&self) -> Self::Key<'_> {
+//!     fn key(&self) -> Feed<'_, Self::Key> {
 //!         &self.name
 //!     }
 //!
@@ -99,7 +99,7 @@
 //!
 //! ```
 //! # #[cfg(feature = "std")] {
-//! # use iddqd::{IdOrdMap, IdOrdItem, id_upcast};
+//! # use iddqd::{IdOrdMap, IdOrdItem, id_upcast, Feed, ForLt};
 //! struct Record {
 //!     id: u32,
 //!     data: String,
@@ -107,9 +107,9 @@
 //!
 //! impl IdOrdItem for Record {
 //!     // The key type is small, so an owned key is preferred.
-//!     type Key<'a> = u32;
+//!     type Key = ForLt![<'a> = u32];
 //!
-//!     fn key(&self) -> Self::Key<'_> {
+//!     fn key(&self) -> Feed<'_, Self::Key> {
 //!         self.id
 //!     }
 //!
@@ -126,7 +126,7 @@
 //!
 //! ```
 //! # #[cfg(feature = "default-hasher")] {
-//! use iddqd::{IdHashItem, id_hash_map, id_upcast};
+//! use iddqd::{IdHashItem, id_hash_map, id_upcast, Equivalent, Feed, ForLt};
 //!
 //! #[derive(Debug)]
 //! struct Artifact {
@@ -137,7 +137,7 @@
 //!
 //! // The key type is a borrowed form of the name and version. It needs to
 //! // implement `Eq + Hash`.
-//! #[derive(Eq, Hash, PartialEq)]
+//! #[derive(Eq, Hash, PartialEq, Equivalent)]
 //! struct ArtifactKey<'a> {
 //!     name: &'a str,
 //!     version: &'a str,
@@ -145,9 +145,9 @@
 //!
 //! impl IdHashItem for Artifact {
 //!     // The key type can borrow from the value.
-//!     type Key<'a> = ArtifactKey<'a>;
+//!     type Key = ForLt![<'a> = ArtifactKey<'a>];
 //!
-//!     fn key(&self) -> Self::Key<'_> {
+//!     fn key(&self) -> Feed<'_, Self::Key> {
 //!         ArtifactKey { name: &self.name, version: &self.version }
 //!     }
 //!
@@ -219,22 +219,21 @@
 //!
 //! ```
 //! # #[cfg(feature = "default-hasher")] {
-//! use equivalent::Equivalent;
-//! # use iddqd::{id_hash_map, IdHashItem, id_upcast};
+//! # use iddqd::{id_hash_map, IdHashItem, id_upcast, Equivalent, Feed, ForLt};
 //! # #[derive(Debug)]
 //! # struct Artifact {
 //! #     name: String,
 //! #     version: String,
 //! #     data: Vec<u8>,
 //! # }
-//! # #[derive(Eq, Hash, PartialEq)]
+//! # #[derive(Eq, Hash, PartialEq, Equivalent)]
 //! # struct ArtifactKey<'a> {
 //! #     name: &'a str,
 //! #     version: &'a str,
 //! # }
 //! # impl IdHashItem for Artifact {
-//! #     type Key<'a> = ArtifactKey<'a>;
-//! #     fn key(&self) -> Self::Key<'_> {
+//! #     type Key = ForLt![<'a> = ArtifactKey<'a>];
+//! #     fn key(&self) -> Feed<'_, Self::Key> {
 //! #         ArtifactKey {
 //! #             name: &self.name,
 //! #             version: &self.version,
@@ -376,6 +375,67 @@
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![warn(missing_docs)]
 
+// /// TODO
+// pub trait ForLt {
+//     /// TODO
+//     type Of<'lt>;
+// }
+
+// /// TODO
+// pub trait WithLifetime<'lt> {
+//     /// TODO
+//     type Of;
+// }
+
+// impl<T: ?Sized + for<'any> WithLifetime<'any>> ForLt for T {
+//     type Of<'lt> = <T as WithLifetime<'lt>>::Of;
+// }
+
+// impl<T: ?Sized + ForLt> ForLt for ::core::marker::PhantomData<fn() -> T> {
+//     type Of<'lt> = T::Of<'lt>;
+// }
+
+// /// TODO
+// /** <!-- rust-analyzer delimiter nudge
+//  * ```rust ,ignore
+//  * ForLt![];
+//  * ``` --> */
+// #[macro_export]
+// macro_rules! ForLt {
+//     ( <$lt:lifetime> = $T:ty $(,)? ) => (
+//         ::core::marker::PhantomData<
+//             fn() -> dyn for<$lt> $crate::WithLifetime<$lt, Of = $T>,
+//         >
+//     );
+// }
+
+pub use ::higher_kinded_types::ForLt;
+
+/// TODO
+pub type Feed<'lt, T> = <T as ForLt>::Of<'lt>;
+
+/// TODO
+pub trait ForLtEquivalent:
+    for<'a, 'b> ForLt<Of<'a>: Eq + Hash + Equivalent<Self::Of<'b>>>
+{
+}
+
+impl<T: ForLt> ForLtEquivalent for T where
+    for<'a, 'b> T::Of<'a>: Eq + Hash + Equivalent<T::Of<'b>>
+{
+}
+
+/// TODO
+pub trait ForLtComparable:
+    for<'a, 'b> ForLt<Of<'a>: Ord + Comparable<Self::Of<'b>>>
+{
+}
+
+impl<T: ForLt> ForLtComparable for T where
+    for<'a, 'b> T::Of<'a>: Ord + Comparable<T::Of<'b>>
+{
+}
+
 #[cfg_attr(not(feature = "std"), macro_use)] // for `format!`
 extern crate alloc;
 #[cfg(feature = "std")]
@@ -395,17 +455,13 @@ pub mod id_ord_map;
 pub mod internal;
 #[cfg(soteria)]
 mod proofs;
+
+pub use self::support::equivalent::{Comparable, Equivalent, simple_impl};
+use core::hash::Hash;
 mod support;
 pub mod tri_hash_map;
 
 pub use bi_hash_map::{imp::BiHashMap, trait_defs::BiHashItem};
-// Re-exports of equivalent traits. Comparable is only used by IdOrdMap, hence
-// is restricted to std.
-#[cfg(feature = "std")]
-#[doc(no_inline)]
-pub use equivalent::Comparable;
-#[doc(no_inline)]
-pub use equivalent::Equivalent;
 pub use id_hash_map::{imp::IdHashMap, trait_defs::IdHashItem};
 #[cfg(feature = "std")]
 pub use id_ord_map::{imp::IdOrdMap, trait_defs::IdOrdItem};
@@ -413,3 +469,6 @@ pub use id_ord_map::{imp::IdOrdMap, trait_defs::IdOrdItem};
 pub use support::daft_utils::IdLeaf;
 pub use support::hash_builder::DefaultHashBuilder;
 pub use tri_hash_map::{imp::TriHashMap, trait_defs::TriHashItem};
+
+extern crate self as equivalent;
+extern crate self as iddqd;

@@ -1,5 +1,5 @@
 use crate::{
-    IdHashItem,
+    Feed, IdHashItem,
     internal::{ValidateCompact, ValidationError},
     support::{alloc::Allocator, hash_table::MapHashTable, map_hash::MapHash},
 };
@@ -51,7 +51,7 @@ impl<S: BuildHasher, A: Allocator> IdHashMapTables<S, A> {
 
     pub(super) fn make_key_hash<T: IdHashItem>(
         &self,
-        key: &T::Key<'_>,
+        key: &Feed<'_, T::Key>,
     ) -> MapHash {
         self.key_to_item.compute_hash(&self.state, key)
     }

@@ -1,5 +1,5 @@
 use crate::{
-    DefaultHashBuilder, TriHashItem, TriHashMap,
+    DefaultHashBuilder, Feed, TriHashItem, TriHashMap,
     support::alloc::{Allocator, Global},
 };
 use core::{fmt, hash::BuildHasher, marker::PhantomData};
@@ -21,7 +21,7 @@ use serde_core::{
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+/// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Equivalent, Feed, ForLt};
 /// # use iddqd_test_utils::serde_json;
 /// use serde::{Deserialize, Serialize};
 ///
@@ -34,23 +34,23 @@ use serde_core::{
 /// }
 ///
 /// // This is a complex key, so it can't be a JSON map key.
-/// #[derive(Eq, Hash, PartialEq)]
+/// #[derive(Eq, Hash, PartialEq, Equivalent)]
 /// struct ComplexKey<'a> {
 ///     name: &'a str,
 ///     email: &'a str,
 /// }
 ///
 /// impl TriHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
-///     type K3<'a> = ComplexKey<'a>;
-///     fn key1(&self) -> Self::K1<'_> {
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
+///     type K3 = ForLt![<'a> = ComplexKey<'a>];
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
-///     fn key3(&self) -> Self::K3<'_> {
+///     fn key3(&self) -> Feed<'_, Self::K3> {
 ///         ComplexKey { name: &self.name, email: &self.email }
 ///     }
 ///     tri_upcast!();
@@ -252,7 +252,7 @@ where
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
 /// use iddqd::{
-///     TriHashItem, TriHashMap, tri_hash_map::TriHashMapAsMap, tri_upcast,
+///     TriHashItem, TriHashMap, tri_hash_map::TriHashMapAsMap, tri_upcast, Feed, ForLt,
 /// };
 /// use serde::{Deserialize, Serialize};
 ///
@@ -264,16 +264,16 @@ where
 /// }
 ///
 /// impl TriHashItem for Item {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
-///     type K3<'a> = &'a str;
-///     fn key1(&self) -> Self::K1<'_> {
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
+///     type K3 = ForLt![<'a> = &'a str];
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
-///     fn key3(&self) -> Self::K3<'_> {
+///     fn key3(&self) -> Feed<'_, Self::K3> {
 ///         &self.email
 ///     }
 ///     tri_upcast!();
@@ -347,29 +347,17 @@ where
 {
     /// Serializes a `TriHashMap` as a JSON object/map using `key1()` as keys.
     pub fn serialize<'a, Ser>(
-        map: &TriHashMap<T, S, A>,
+        map: &'a TriHashMap<T, S, A>,
         serializer: Ser,
     ) -> Result<Ser::Ok, Ser::Error>
     where
-        T: 'a + TriHashItem + Serialize,
-        T::K1<'a>: Serialize,
+        T: TriHashItem + Serialize,
+        Feed<'a, T::K1>: Serialize,
         Ser: Serializer,
     {
         let mut ser_map = serializer.serialize_map(Some(map.len()))?;
         for item in map.iter() {
             let key1 = item.key1();
-            // SAFETY:
-            //
-            // * Lifetime extension: for a type T and two lifetime params 'a and
-            //   'b, T<'a> and T<'b> aren't guaranteed to have the same layout,
-            //   but (a) that is true today and (b) it would be shocking and
-            //   break half the Rust ecosystem if that were to change in the
-            //   future.
-            // * We only use key within the scope of this block before
-            //   immediately dropping it. In particular, ser_map.serialize_entry
-            //   serializes the key without holding a reference to it.
-            let key1 =
-                unsafe { core::mem::transmute::<T::K1<'_>, T::K1<'a>>(key1) };
             ser_map.serialize_entry(&key1, item)?;
         }
         ser_map.end()

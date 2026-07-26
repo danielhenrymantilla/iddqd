@@ -3,7 +3,8 @@ use crate::hegel_support::{
 };
 use hegel::{TestCase, generators as gs};
 use iddqd::{
-    IdHashItem, IdHashMap, id_hash_map, id_upcast, internal::ValidateCompact,
+    Feed, ForLt, IdHashItem, IdHashMap, id_hash_map, id_upcast,
+    internal::ValidateCompact,
 };
 use iddqd_test_utils::{
     borrowed_item::BorrowedItem,
@@ -24,9 +25,9 @@ struct SimpleItem {
 }
 
 impl IdHashItem for SimpleItem {
-    type Key<'a> = u32;
+    type Key = ForLt![<'a> = u32];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         self.key
     }
 
@@ -829,8 +830,8 @@ mod macro_tests {
     }
 
     impl IdHashItem for User {
-        type Key<'a> = u32;
-        fn key(&self) -> Self::Key<'_> {
+        type Key = ForLt![<'a> = u32];
+        fn key(&self) -> u32 {
             self.id
         }
         id_upcast!();
@@ -939,9 +940,8 @@ struct PanickyHashItem {
 
 #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))]
 impl IdHashItem for PanickyHashItem {
-    type Key<'a> = iddqd_test_utils::panic_safety::PanickyKey;
-
-    fn key(&self) -> Self::Key<'_> {
+    type Key = ForLt![<'a> = iddqd_test_utils::panic_safety::PanickyKey];
+    fn key(&self) -> Feed<'_, Self::Key> {
         iddqd_test_utils::panic_safety::observe_panicky_call("key");
         iddqd_test_utils::panic_safety::PanickyKey(self.key)
     }

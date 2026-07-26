@@ -3,13 +3,13 @@ use super::{
     VacantEntry, tables::IdHashMapTables,
 };
 use crate::{
-    DefaultHashBuilder,
+    DefaultHashBuilder, Feed,
     errors::DuplicateItem,
     internal::{ValidateCompact, ValidationError},
     support::{
         ItemIndex,
         alloc::{Allocator, Global, global_alloc},
-        borrow::DormantMutRef,
+        // borrow::DormantMutRef,
         hash_table,
         item_set::ItemSet,
         map_hash::MapHash,
@@ -32,7 +32,7 @@ use equivalent::Equivalent;
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+/// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
 ///
 /// // Define a struct with a key.
 /// #[derive(Debug, PartialEq, Eq, Hash)]
@@ -44,9 +44,9 @@ use equivalent::Equivalent;
 /// // Implement IdHashItem for the struct.
 /// impl IdHashItem for MyItem {
 ///     // Keys can borrow from the item.
-///     type Key<'a> = &'a str;
+///     type Key = ForLt![<'a> = &'a str];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///
@@ -89,7 +89,7 @@ impl<T: IdHashItem> IdHashMap<T> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -98,8 +98,8 @@ impl<T: IdHashItem> IdHashMap<T> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -121,7 +121,7 @@ impl<T: IdHashItem> IdHashMap<T> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -130,8 +130,8 @@ impl<T: IdHashItem> IdHashMap<T> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -160,7 +160,7 @@ impl<T: IdHashItem, S: BuildHasher> IdHashMap<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
@@ -170,8 +170,8 @@ impl<T: IdHashItem, S: BuildHasher> IdHashMap<T, S> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -193,7 +193,7 @@ impl<T: IdHashItem, S: BuildHasher> IdHashMap<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
@@ -203,8 +203,8 @@ impl<T: IdHashItem, S: BuildHasher> IdHashMap<T, S> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -240,7 +240,7 @@ impl<T: IdHashItem, A: Clone + Allocator> IdHashMap<T, DefaultHashBuilder, A> {
     ///
     /// ```
     /// # #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))] {
-    /// use iddqd::{IdHashMap, IdHashItem, id_upcast};
+    /// use iddqd::{IdHashMap, IdHashItem, id_upcast, Feed, ForLt};
     /// # use iddqd_test_utils::bumpalo;
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
@@ -250,8 +250,8 @@ impl<T: IdHashItem, A: Clone + Allocator> IdHashMap<T, DefaultHashBuilder, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> { &self.id }
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> { &self.id }
     ///     id_upcast!();
     /// }
     ///
@@ -284,7 +284,7 @@ impl<T: IdHashItem, A: Clone + Allocator> IdHashMap<T, DefaultHashBuilder, A> {
     ///
     /// ```
     /// # #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))] {
-    /// use iddqd::{IdHashMap, IdHashItem, id_upcast};
+    /// use iddqd::{IdHashMap, IdHashItem, id_upcast, Feed, ForLt};
     /// # use iddqd_test_utils::bumpalo;
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
@@ -294,8 +294,8 @@ impl<T: IdHashItem, A: Clone + Allocator> IdHashMap<T, DefaultHashBuilder, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> { &self.id }
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> { &self.id }
     ///     id_upcast!();
     /// }
     ///
@@ -330,7 +330,7 @@ impl<T: IdHashItem, S: BuildHasher, A: Clone + Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "allocator-api2")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     /// # use iddqd_test_utils::bumpalo;
     ///
@@ -341,8 +341,8 @@ impl<T: IdHashItem, S: BuildHasher, A: Clone + Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -375,7 +375,7 @@ impl<T: IdHashItem, S: BuildHasher, A: Clone + Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "allocator-api2")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     /// use std::collections::hash_map::RandomState;
     /// # use iddqd_test_utils::bumpalo;
     ///
@@ -386,8 +386,8 @@ impl<T: IdHashItem, S: BuildHasher, A: Clone + Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -433,7 +433,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))] {
-    /// use iddqd::{IdHashMap, IdHashItem, id_upcast};
+    /// use iddqd::{IdHashMap, IdHashItem, id_upcast, Feed, ForLt};
     /// # use iddqd_test_utils::bumpalo;
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
@@ -443,8 +443,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> { &self.id }
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> { &self.id }
     ///     id_upcast!();
     /// }
     ///
@@ -465,7 +465,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -474,8 +474,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -497,7 +497,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -506,8 +506,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -531,7 +531,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -540,8 +540,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -568,7 +568,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -577,8 +577,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -622,7 +622,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -631,8 +631,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -669,7 +669,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -678,8 +678,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -710,7 +710,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -719,8 +719,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -764,7 +764,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -773,8 +773,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -809,7 +809,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -818,8 +818,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -850,7 +850,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -859,8 +859,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -949,7 +949,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -958,8 +958,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -1002,7 +1002,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1011,8 +1011,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -1050,7 +1050,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1059,8 +1059,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -1075,7 +1075,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// ```
     pub fn contains_key<'a, Q>(&'a self, key1: &Q) -> bool
     where
-        Q: ?Sized + Hash + Equivalent<T::Key<'a>>,
+        Q: ?Sized + Hash + Equivalent<Feed<'a, T::Key>>,
     {
         self.find_index(key1).is_some()
     }
@@ -1086,7 +1086,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1095,8 +1095,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -1111,7 +1111,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// ```
     pub fn get<'a, Q>(&'a self, key: &Q) -> Option<&'a T>
     where
-        Q: ?Sized + Hash + Equivalent<T::Key<'a>>,
+        Q: ?Sized + Hash + Equivalent<Feed<'a, T::Key>>,
     {
         self.find_index(key).map(|ix| &self.items[ix])
     }
@@ -1122,7 +1122,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1131,8 +1131,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -1151,19 +1151,12 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// ```
     pub fn get_mut<'a, Q>(&'a mut self, key: &Q) -> Option<RefMut<'a, T, S>>
     where
-        Q: ?Sized + Hash + Equivalent<T::Key<'a>>,
+        Q: ?Sized + Hash + for<'b> Equivalent<Feed<'b, T::Key>>,
     {
-        let (dormant_map, index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let index = map.find_index(key)?;
-            (dormant_map, index)
-        };
-
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-        let item = &mut awakened_map.items[index];
-        let state = awakened_map.tables.state.clone();
-        let hashes = awakened_map.tables.make_hash(item);
+        let index = self.find_index(key)?;
+        let item = &mut self.items[index];
+        let state = self.tables.state.clone();
+        let hashes = self.tables.make_hash(item);
         Some(RefMut::new(state, hashes, item))
     }
 
@@ -1173,7 +1166,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1182,8 +1175,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -1202,16 +1195,10 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// ```
     pub fn remove<'a, Q>(&'a mut self, key: &Q) -> Option<T>
     where
-        Q: ?Sized + Hash + Equivalent<T::Key<'a>>,
+        Q: ?Sized + Hash + for<'b> Equivalent<Feed<'b, T::Key>>,
     {
-        let (dormant_map, remove_index) = {
-            let (map, dormant_map) = DormantMutRef::new(self);
-            let remove_index = map.find_index(key)?;
-            (dormant_map, remove_index)
-        };
-        // SAFETY: `map` is not used after this point.
-        let awakened_map = unsafe { dormant_map.awaken() };
-        awakened_map.remove_by_index(remove_index)
+        let remove_index = self.find_index(key)?;
+        self.remove_by_index(remove_index)
     }
 
     /// Retrieves an entry by its key.
@@ -1223,7 +1210,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1232,8 +1219,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -1248,7 +1235,10 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// assert_eq!(map.len(), 2);
     /// # }
     /// ```
-    pub fn entry<'a>(&'a mut self, key: T::Key<'_>) -> Entry<'a, T, S, A> {
+    pub fn entry<'a>(
+        &'a mut self,
+        key: Feed<'_, T::Key>,
+    ) -> Entry<'a, T, S, A> {
         // Why does this always take an owned key? Well, it would seem like we
         // should be able to pass in any Q that is equivalent. That results in
         // *this* code compiling fine, but callers have trouble using it because
@@ -1256,36 +1246,29 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
         // rather than a shorter lifetime.
         //
         // By accepting owned keys, we can use the upcast functions to convert
-        // them to a shorter lifetime (so this function accepts T::Key<'_>
-        // rather than T::Key<'a>).
+        // them to a shorter lifetime (so this function accepts `Feed<'_, T::Key>`
+        // rather than `Feed<'a, T::Key>`).
         //
         // Really, the solution here is to allow GATs to require covariant
         // parameters. If that were allowed, the borrow checker should be able
         // to figure out that keys don't need to be borrowed for the full 'a,
         // just for some shorter lifetime.
-        let (map, dormant_map) = DormantMutRef::new(self);
         let key = T::upcast_key(key);
         {
             // index is explicitly typed to show that it has a trivial Drop impl
-            // that doesn't capture anything from map.
-            let index: Option<ItemIndex> = map.tables.key_to_item.find_index(
-                &map.tables.state,
+            // that doesn't capture anything from `self`.
+            let index: Option<ItemIndex> = self.tables.key_to_item.find_index(
+                &self.tables.state,
                 &key,
-                |index| map.items[index].key(),
+                |index| self.items[index].key(),
             );
             if let Some(index) = index {
                 drop(key);
-                return Entry::Occupied(
-                    // SAFETY: `map` is not used after this point.
-                    unsafe { OccupiedEntry::new(dormant_map, index) },
-                );
+                return Entry::Occupied(OccupiedEntry::new(self, index));
             }
         }
-        let hash = map.make_key_hash(&key);
-        Entry::Vacant(
-            // SAFETY: `map` is not used after this point.
-            unsafe { VacantEntry::new(dormant_map, hash) },
-        )
+        let hash = self.make_key_hash(&key);
+        Entry::Vacant(VacantEntry::new(self, hash))
     }
 
     /// Retains only the elements specified by the predicate.
@@ -1297,7 +1280,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1306,9 +1289,9 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
+    ///     type Key = ForLt![<'a> = &'a str];
     ///
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///
@@ -1334,7 +1317,6 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
         F: for<'b> FnMut(RefMut<'b, T, S>) -> bool,
     {
         let hash_state = self.tables.state.clone();
-        let (_, mut dormant_items) = DormantMutRef::new(&mut self.items);
         let mut removed_item = None;
 
         self.tables.key_to_item.retain(|index| {
@@ -1347,50 +1329,25 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
             // unwind before the table erased the entry, leaving `key_to_item`
             // pointing at a slot we already removed from `items`.
             drop(removed_item.take());
+            let item: &mut T = self
+                .items
+                .get_mut(index)
+                .expect("all indexes are present in self.items");
+            let key = item.key();
+            let hash = MapHash::new(hash_state.hash_one(key));
 
-            let (item, dormant_items) = {
-                // SAFETY: All uses of `items` ended in the previous iteration.
-                let items = unsafe { dormant_items.reborrow() };
-                let (items, dormant_items) = DormantMutRef::new(items);
-                let item: &'a mut T = items
-                    .get_mut(index)
-                    .expect("all indexes are present in self.items");
-                (item, dormant_items)
+            let _should_retain @ false =
+                f(RefMut::new(hash_state.clone(), hash, item))
+            else {
+                return true;
             };
 
-            let (hash, dormant_item) = {
-                let (item, dormant_item): (&'a mut T, _) =
-                    DormantMutRef::new(item);
-                // Use T::key(item) rather than item.key() to force the key
-                // trait function to be called for T rather than &mut T.
-                let key = T::key(item);
-                let hash = hash_state.hash_one(key);
-                (MapHash::new(hash), dormant_item)
-            };
-
-            let retain = {
-                // SAFETY: The original item is no longer used after the second
-                // block above. dormant_items, from which item is derived, is
-                // currently dormant.
-                let item = unsafe { dormant_item.awaken() };
-
-                let ref_mut = RefMut::new(hash_state.clone(), hash, item);
-                f(ref_mut)
-            };
-
-            if retain {
-                true
-            } else {
-                // SAFETY: The original items is no longer used after the first
-                // block above, and item + dormant item have been used above.
-                let items = unsafe { dormant_items.awaken() };
-                removed_item = Some(
-                    items
-                        .remove(index)
-                        .expect("all indexes are present in self.items"),
-                );
-                false
-            }
+            removed_item = Some(
+                self.items
+                    .remove(index)
+                    .expect("all indexes are present in self.items"),
+            );
+            false
         });
 
         // Anything in `removed_item` is implicitly dropped now.
@@ -1398,7 +1355,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
 
     fn find_index<'a, Q>(&'a self, k: &Q) -> Option<ItemIndex>
     where
-        Q: Hash + Equivalent<T::Key<'a>> + ?Sized,
+        Q: Hash + Equivalent<Feed<'a, T::Key>> + ?Sized,
     {
         self.tables
             .key_to_item
@@ -1409,7 +1366,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
         self.tables.make_hash(item)
     }
 
-    fn make_key_hash(&self, key: &T::Key<'_>) -> MapHash {
+    fn make_key_hash(&self, key: &Feed<'_, T::Key>) -> MapHash {
         self.tables.make_key_hash::<T>(key)
     }
 
@@ -1527,34 +1484,18 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IdHashMap<T, S, A> {
     }
 }
 
-impl<'a, T, S: Clone + BuildHasher, A: Allocator> fmt::Debug
-    for IdHashMap<T, S, A>
+impl<T, S: Clone + BuildHasher, A: Allocator> fmt::Debug for IdHashMap<T, S, A>
 where
     T: IdHashItem + fmt::Debug,
-    T::Key<'a>: fmt::Debug,
-    T: 'a,
+    for<'local> Feed<'local, T::Key>: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut map = f.debug_map();
 
         for item in self.iter() {
-            let key = item.key();
-
-            // SAFETY:
-            //
-            // * Lifetime extension: for a type T and two lifetime params 'a and
-            //   'b, T<'a> and T<'b> aren't guaranteed to have the same layout,
-            //   but (a) that is true today and (b) it would be shocking and
-            //   break half the Rust ecosystem if that were to change in the
-            //   future.
-            // * We only use key within the scope of this block before immediately
-            //   dropping it. In particular, map.entry calls key.fmt() without
-            //   holding a reference to it.
-            let key: T::Key<'a> =
-                unsafe { core::mem::transmute::<T::Key<'_>, T::Key<'a>>(key) };
-
-            map.entry(&key, item);
+            map.entry(&item.key(), item);
         }
+
         map.finish()
     }
 }
@@ -1615,7 +1556,7 @@ impl<T: IdHashItem + Eq, S: Clone + BuildHasher, A: Allocator> Eq
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+/// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug, PartialEq, Eq, Hash)]
 /// struct Item {
@@ -1624,8 +1565,8 @@ impl<T: IdHashItem + Eq, S: Clone + BuildHasher, A: Allocator> Eq
 /// }
 ///
 /// impl IdHashItem for Item {
-///     type Key<'a> = &'a str;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = &'a str];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///     id_upcast!();
@@ -1679,7 +1620,7 @@ impl<'a, T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1688,8 +1629,8 @@ impl<'a, T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -1723,7 +1664,7 @@ impl<'a, T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1732,8 +1673,8 @@ impl<'a, T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -1769,7 +1710,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
     ///
     /// ```
     /// # #[cfg(feature = "default-hasher")] {
-    /// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+    /// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
     ///
     /// #[derive(Debug, PartialEq, Eq, Hash)]
     /// struct Item {
@@ -1778,8 +1719,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
     /// }
     ///
     /// impl IdHashItem for Item {
-    ///     type Key<'a> = &'a str;
-    ///     fn key(&self) -> Self::Key<'_> {
+    ///     type Key = ForLt![<'a> = &'a str];
+    ///     fn key(&self) -> Feed<'_, Self::Key> {
     ///         &self.id
     ///     }
     ///     id_upcast!();
@@ -1807,7 +1748,7 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{IdHashItem, IdHashMap, id_upcast};
+/// use iddqd::{IdHashItem, IdHashMap, id_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug, PartialEq, Eq, Hash)]
 /// struct Item {
@@ -1816,8 +1757,8 @@ impl<T: IdHashItem, S: Clone + BuildHasher, A: Allocator> IntoIterator
 /// }
 ///
 /// impl IdHashItem for Item {
-///     type Key<'a> = &'a str;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = &'a str];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///     id_upcast!();
@@ -1849,12 +1790,14 @@ impl<T: IdHashItem, S: Default + Clone + BuildHasher, A: Allocator + Default>
 mod tests {
     use super::*;
     use core::{cell::Cell, hash::Hasher};
+    use higher_kinded_types::ForLt;
+    use iddqd_derive::Comparable;
 
     std::thread_local! {
         static USER_HASH_CALLS: Cell<u32> = const { Cell::new(0) };
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Equivalent, Comparable)]
     struct CountedKey(u32);
 
     impl Hash for CountedKey {
@@ -1877,8 +1820,8 @@ mod tests {
     }
 
     impl IdHashItem for CountedItem {
-        type Key<'a> = CountedKey;
-        fn key(&self) -> Self::Key<'_> {
+        type Key = ForLt![<'a> = CountedKey];
+        fn key(&self) -> Feed<'_, Self::Key> {
             CountedKey(self.id)
         }
         id_upcast!();

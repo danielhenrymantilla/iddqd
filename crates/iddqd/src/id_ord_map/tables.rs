@@ -1,5 +1,6 @@
 use super::IdOrdItem;
 use crate::{
+    ForLt,
     internal::{ValidateCompact, ValidationError},
     support::{btree_table::MapBTreeTable, map_hash::MapHash},
 };
@@ -32,10 +33,10 @@ impl IdOrdMapTables {
         Ok(())
     }
 
-    pub(super) fn make_hash<'a, T>(&self, item: &'a T) -> MapHash
+    pub(super) fn make_hash<'any, T>(&self, item: &'any T) -> MapHash
     where
-        T::Key<'a>: Hash,
-        T: 'a + IdOrdItem,
+        T::Key: ForLt<Of<'any>: Hash>,
+        T: IdOrdItem,
     {
         self.key_to_item.compute_hash(item.key())
     }

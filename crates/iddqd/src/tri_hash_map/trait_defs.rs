@@ -1,7 +1,7 @@
 //! Trait definitions for `TriHashMap`.
 
+use crate::{Feed, ForLtEquivalent};
 use alloc::{boxed::Box, rc::Rc, sync::Arc};
-use core::hash::Hash;
 
 /// An item in a [`TriHashMap`].
 ///
@@ -11,7 +11,7 @@ use core::hash::Hash;
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{TriHashItem, TriHashMap, tri_upcast};
+/// use iddqd::{TriHashItem, TriHashMap, tri_upcast, Feed, ForLt};
 ///
 /// // Define a struct with three keys.
 /// #[derive(Debug, PartialEq, Eq, Hash)]
@@ -23,19 +23,19 @@ use core::hash::Hash;
 ///
 /// // Implement TriHashItem for the struct.
 /// impl TriHashItem for Person {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
-///     type K3<'a> = &'a str;
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
+///     type K3 = ForLt![<'a> = &'a str];
 ///
-///     fn key1(&self) -> Self::K1<'_> {
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
 ///
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
 ///
-///     fn key3(&self) -> Self::K3<'_> {
+///     fn key3(&self) -> Feed<'_, Self::K3> {
 ///         &self.email
 ///     }
 ///
@@ -62,28 +62,22 @@ use core::hash::Hash;
 /// [`TriHashMap`]: crate::TriHashMap
 pub trait TriHashItem {
     /// The first key type.
-    type K1<'a>: Eq + Hash
-    where
-        Self: 'a;
+    type K1: ForLtEquivalent;
 
     /// The second key type.
-    type K2<'a>: Eq + Hash
-    where
-        Self: 'a;
+    type K2: ForLtEquivalent;
 
     /// The third key type.
-    type K3<'a>: Eq + Hash
-    where
-        Self: 'a;
+    type K3: ForLtEquivalent;
 
     /// Retrieves the first key.
-    fn key1(&self) -> Self::K1<'_>;
+    fn key1(&self) -> Feed<'_, Self::K1>;
 
     /// Retrieves the second key.
-    fn key2(&self) -> Self::K2<'_>;
+    fn key2(&self) -> Feed<'_, Self::K2>;
 
     /// Retrieves the third key.
-    fn key3(&self) -> Self::K3<'_>;
+    fn key3(&self) -> Feed<'_, Self::K3>;
 
     /// Upcasts the first key to a shorter lifetime, in effect asserting that
     /// the lifetime `'a` on [`TriHashItem::K1`] is covariant.
@@ -92,8 +86,8 @@ pub trait TriHashItem {
     ///
     /// [`tri_upcast`]: crate::tri_upcast
     fn upcast_key1<'short, 'long: 'short>(
-        long: Self::K1<'long>,
-    ) -> Self::K1<'short>;
+        long: Feed<'long, Self::K1>,
+    ) -> Feed<'short, Self::K1>;
 
     /// Upcasts the second key to a shorter lifetime, in effect asserting that
     /// the lifetime `'a` on [`TriHashItem::K2`] is covariant.
@@ -102,8 +96,8 @@ pub trait TriHashItem {
     ///
     /// [`tri_upcast`]: crate::tri_upcast
     fn upcast_key2<'short, 'long: 'short>(
-        long: Self::K2<'long>,
-    ) -> Self::K2<'short>;
+        long: Feed<'long, Self::K2>,
+    ) -> Feed<'short, Self::K2>;
 
     /// Upcasts the third key to a shorter lifetime, in effect asserting that
     /// the lifetime `'a` on [`TriHashItem::K3`] is covariant.
@@ -112,62 +106,44 @@ pub trait TriHashItem {
     ///
     /// [`tri_upcast`]: crate::tri_upcast
     fn upcast_key3<'short, 'long: 'short>(
-        long: Self::K3<'long>,
-    ) -> Self::K3<'short>;
+        long: Feed<'long, Self::K3>,
+    ) -> Feed<'short, Self::K3>;
 }
 
 macro_rules! impl_for_ref {
     ($type:ty) => {
         impl<'b, T: 'b + ?Sized + TriHashItem> TriHashItem for $type {
-            type K1<'a>
-                = T::K1<'a>
-            where
-                Self: 'a;
-            type K2<'a>
-                = T::K2<'a>
-            where
-                Self: 'a;
-            type K3<'a>
-                = T::K3<'a>
-            where
-                Self: 'a;
+            type K1 = T::K1;
+            type K2 = T::K2;
+            type K3 = T::K3;
 
-            fn key1(&self) -> Self::K1<'_> {
+            fn key1(&self) -> Feed<'_, Self::K1> {
                 (**self).key1()
             }
 
-            fn key2(&self) -> Self::K2<'_> {
+            fn key2(&self) -> Feed<'_, Self::K2> {
                 (**self).key2()
             }
 
-            fn key3(&self) -> Self::K3<'_> {
+            fn key3(&self) -> Feed<'_, Self::K3> {
                 (**self).key3()
             }
 
             fn upcast_key1<'short, 'long: 'short>(
-                long: Self::K1<'long>,
-            ) -> Self::K1<'short>
-            where
-                Self: 'long,
-            {
+                long: Feed<'long, Self::K1>,
+            ) -> Feed<'short, Self::K1> {
                 T::upcast_key1(long)
             }
 
             fn upcast_key2<'short, 'long: 'short>(
-                long: Self::K2<'long>,
-            ) -> Self::K2<'short>
-            where
-                Self: 'long,
-            {
+                long: Feed<'long, Self::K2>,
+            ) -> Feed<'short, Self::K2> {
                 T::upcast_key2(long)
             }
 
             fn upcast_key3<'short, 'long: 'short>(
-                long: Self::K3<'long>,
-            ) -> Self::K3<'short>
-            where
-                Self: 'long,
-            {
+                long: Feed<'long, Self::K3>,
+            ) -> Feed<'short, Self::K3> {
                 T::upcast_key3(long)
             }
         }
@@ -180,48 +156,37 @@ impl_for_ref!(&'b mut T);
 macro_rules! impl_for_box {
     ($type:ty) => {
         impl<T: ?Sized + TriHashItem> TriHashItem for $type {
-            type K1<'a>
-                = T::K1<'a>
-            where
-                Self: 'a;
+            type K1 = T::K1;
+            type K2 = T::K2;
+            type K3 = T::K3;
 
-            type K2<'a>
-                = T::K2<'a>
-            where
-                Self: 'a;
-
-            type K3<'a>
-                = T::K3<'a>
-            where
-                Self: 'a;
-
-            fn key1(&self) -> Self::K1<'_> {
+            fn key1(&self) -> Feed<'_, Self::K1> {
                 (**self).key1()
             }
 
-            fn key2(&self) -> Self::K2<'_> {
+            fn key2(&self) -> Feed<'_, Self::K2> {
                 (**self).key2()
             }
 
-            fn key3(&self) -> Self::K3<'_> {
+            fn key3(&self) -> Feed<'_, Self::K3> {
                 (**self).key3()
             }
 
             fn upcast_key1<'short, 'long: 'short>(
-                long: Self::K1<'long>,
-            ) -> Self::K1<'short> {
+                long: Feed<'long, Self::K1>,
+            ) -> Feed<'short, Self::K1> {
                 T::upcast_key1(long)
             }
 
             fn upcast_key2<'short, 'long: 'short>(
-                long: Self::K2<'long>,
-            ) -> Self::K2<'short> {
+                long: Feed<'long, Self::K2>,
+            ) -> Feed<'short, Self::K2> {
                 T::upcast_key2(long)
             }
 
             fn upcast_key3<'short, 'long: 'short>(
-                long: Self::K3<'long>,
-            ) -> Self::K3<'short> {
+                long: Feed<'long, Self::K3>,
+            ) -> Feed<'short, Self::K3> {
                 T::upcast_key3(long)
             }
         }

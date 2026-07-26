@@ -1,5 +1,6 @@
 //! Trait definitions for `IdOrdMap`.
 
+use crate::{Feed, ForLtComparable};
 use alloc::{boxed::Box, rc::Rc, sync::Arc};
 
 /// An element stored in an [`IdOrdMap`].
@@ -9,7 +10,7 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc};
 /// # Examples
 ///
 /// ```
-/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast};
+/// use iddqd::{IdOrdItem, IdOrdMap, id_upcast, Feed, ForLt};
 ///
 /// // Define a struct with a key.
 /// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -21,9 +22,9 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc};
 /// // Implement IdOrdItem for the struct.
 /// impl IdOrdItem for MyItem {
 ///     // Keys can borrow from the item.
-///     type Key<'a> = &'a str;
+///     type Key = ForLt![<'a> = &'a str];
 ///
-///     fn key(&self) -> Self::Key<'_> {
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         &self.id
 ///     }
 ///
@@ -39,12 +40,10 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc};
 /// [`IdOrdMap`]: crate::IdOrdMap
 pub trait IdOrdItem {
     /// The key type.
-    type Key<'a>: Ord
-    where
-        Self: 'a;
+    type Key: ForLtComparable;
 
     /// Retrieves the key.
-    fn key(&self) -> Self::Key<'_>;
+    fn key(&self) -> Feed<'_, Self::Key>;
 
     /// Upcasts the key to a shorter lifetime, in effect asserting that the
     /// lifetime `'a` on [`IdOrdItem::Key`] is covariant.
@@ -53,28 +52,22 @@ pub trait IdOrdItem {
     ///
     /// [`id_upcast`]: crate::id_upcast
     fn upcast_key<'short, 'long: 'short>(
-        long: Self::Key<'long>,
-    ) -> Self::Key<'short>;
+        long: Feed<'long, Self::Key>,
+    ) -> Feed<'short, Self::Key>;
 }
 
 macro_rules! impl_for_ref {
     ($type:ty) => {
         impl<'b, T: 'b + ?Sized + IdOrdItem> IdOrdItem for $type {
-            type Key<'a>
-                = T::Key<'a>
-            where
-                Self: 'a;
+            type Key = T::Key;
 
-            fn key(&self) -> Self::Key<'_> {
+            fn key(&self) -> Feed<'_, Self::Key> {
                 (**self).key()
             }
 
             fn upcast_key<'short, 'long: 'short>(
-                long: Self::Key<'long>,
-            ) -> Self::Key<'short>
-            where
-                Self: 'long,
-            {
+                long: Feed<'long, Self::Key>,
+            ) -> Feed<'short, Self::Key> {
                 T::upcast_key(long)
             }
         }
@@ -87,18 +80,15 @@ impl_for_ref!(&'b mut T);
 macro_rules! impl_for_box {
     ($type:ty) => {
         impl<T: ?Sized + IdOrdItem> IdOrdItem for $type {
-            type Key<'a>
-                = T::Key<'a>
-            where
-                Self: 'a;
+            type Key = T::Key;
 
-            fn key(&self) -> Self::Key<'_> {
+            fn key(&self) -> Feed<'_, Self::Key> {
                 (**self).key()
             }
 
             fn upcast_key<'short, 'long: 'short>(
-                long: Self::Key<'long>,
-            ) -> Self::Key<'short> {
+                long: Feed<'long, Self::Key>,
+            ) -> Feed<'short, Self::Key> {
                 T::upcast_key(long)
             }
         }

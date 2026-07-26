@@ -14,7 +14,7 @@
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{IdHashItem, id_hash_map, id_upcast};
+/// use iddqd::{IdHashItem, id_hash_map, id_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug)]
 /// struct User {
@@ -23,8 +23,8 @@
 /// }
 ///
 /// impl IdHashItem for User {
-///     type Key<'a> = u32;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = u32];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         self.id
 ///     }
 ///     id_upcast!();
@@ -88,7 +88,7 @@ macro_rules! id_hash_map {
 ///
 /// ```
 /// # #[cfg(feature = "std")] {
-/// use iddqd::{IdOrdItem, id_ord_map, id_upcast};
+/// use iddqd::{IdOrdItem, id_ord_map, id_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug)]
 /// struct User {
@@ -97,8 +97,8 @@ macro_rules! id_hash_map {
 /// }
 ///
 /// impl IdOrdItem for User {
-///     type Key<'a> = u32;
-///     fn key(&self) -> Self::Key<'_> {
+///     type Key = ForLt![<'a> = u32];
+///     fn key(&self) -> Feed<'_, Self::Key> {
 ///         self.id
 ///     }
 ///     id_upcast!();
@@ -144,7 +144,7 @@ macro_rules! id_ord_map {
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{BiHashItem, bi_hash_map, bi_upcast};
+/// use iddqd::{BiHashItem, bi_hash_map, bi_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug)]
 /// struct User {
@@ -153,12 +153,12 @@ macro_rules! id_ord_map {
 /// }
 ///
 /// impl BiHashItem for User {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
-///     fn key1(&self) -> Self::K1<'_> {
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
 ///     bi_upcast!();
@@ -225,7 +225,7 @@ macro_rules! bi_hash_map {
 ///
 /// ```
 /// # #[cfg(feature = "default-hasher")] {
-/// use iddqd::{TriHashItem, tri_hash_map, tri_upcast};
+/// use iddqd::{TriHashItem, tri_hash_map, tri_upcast, Feed, ForLt};
 ///
 /// #[derive(Debug)]
 /// struct Person {
@@ -235,16 +235,16 @@ macro_rules! bi_hash_map {
 /// }
 ///
 /// impl TriHashItem for Person {
-///     type K1<'a> = u32;
-///     type K2<'a> = &'a str;
-///     type K3<'a> = &'a str;
-///     fn key1(&self) -> Self::K1<'_> {
+///     type K1 = ForLt![<'a> = u32];
+///     type K2 = ForLt![<'a> = &'a str];
+///     type K3 = ForLt![<'a> = &'a str];
+///     fn key1(&self) -> Feed<'_, Self::K1> {
 ///         self.id
 ///     }
-///     fn key2(&self) -> Self::K2<'_> {
+///     fn key2(&self) -> Feed<'_, Self::K2> {
 ///         &self.name
 ///     }
-///     fn key3(&self) -> Self::K3<'_> {
+///     fn key3(&self) -> Feed<'_, Self::K3> {
 ///         &self.email
 ///     }
 ///     tri_upcast!();
@@ -313,11 +313,8 @@ macro_rules! id_upcast {
     () => {
         #[inline]
         fn upcast_key<'short, 'long: 'short>(
-            long: Self::Key<'long>,
-        ) -> Self::Key<'short>
-        where
-            Self: 'long,
-        {
+            long: $crate::Feed<'long, Self::Key>,
+        ) -> $crate::Feed<'short, Self::Key> {
             long
         }
     };
@@ -337,21 +334,15 @@ macro_rules! bi_upcast {
     () => {
         #[inline]
         fn upcast_key1<'short, 'long: 'short>(
-            long: Self::K1<'long>,
-        ) -> Self::K1<'short>
-        where
-            Self: 'long,
-        {
+            long: $crate::Feed<'long, Self::K1>,
+        ) -> $crate::Feed<'short, Self::K1> {
             long
         }
 
         #[inline]
         fn upcast_key2<'short, 'long: 'short>(
-            long: Self::K2<'long>,
-        ) -> Self::K2<'short>
-        where
-            Self: 'long,
-        {
+            long: $crate::Feed<'long, Self::K2>,
+        ) -> $crate::Feed<'short, Self::K2> {
             long
         }
     };
@@ -371,31 +362,22 @@ macro_rules! tri_upcast {
     () => {
         #[inline]
         fn upcast_key1<'short, 'long: 'short>(
-            long: Self::K1<'long>,
-        ) -> Self::K1<'short>
-        where
-            Self: 'long,
-        {
+            long: $crate::Feed<'long, Self::K1>,
+        ) -> $crate::Feed<'short, Self::K1> {
             long
         }
 
         #[inline]
         fn upcast_key2<'short, 'long: 'short>(
-            long: Self::K2<'long>,
-        ) -> Self::K2<'short>
-        where
-            Self: 'long,
-        {
+            long: $crate::Feed<'long, Self::K2>,
+        ) -> $crate::Feed<'short, Self::K2> {
             long
         }
 
         #[inline]
         fn upcast_key3<'short, 'long: 'short>(
-            long: Self::K3<'long>,
-        ) -> Self::K3<'short>
-        where
-            Self: 'long,
-        {
+            long: $crate::Feed<'long, Self::K3>,
+        ) -> $crate::Feed<'short, Self::K3> {
             long
         }
     };

@@ -1,6 +1,6 @@
 use iddqd::{
-    BiHashItem, BiHashMap, IdHashItem, IdHashMap, TriHashItem, TriHashMap,
-    bi_hash_map, bi_upcast,
+    BiHashItem, BiHashMap, Comparable, Equivalent, Feed, ForLt, IdHashItem,
+    IdHashMap, TriHashItem, TriHashMap, bi_hash_map, bi_upcast,
     errors::DuplicateItem,
     id_hash_map, id_upcast,
     internal::{ValidateCompact, ValidationError},
@@ -113,6 +113,8 @@ pub struct KeyChaos {
     pub ord: Option<ChaosOrd>,
 }
 
+iddqd::simple_impl!(KeyChaos);
+
 impl KeyChaos {
     pub fn with_eq(self, chaos: ChaosEq) -> Self {
         Self { eq: Some(chaos), ..self }
@@ -131,6 +133,8 @@ pub enum ChaosEq {
     FlipFlop(Cell<bool>),
 }
 
+iddqd::simple_impl!(ChaosEq);
+
 impl ChaosEq {
     pub fn all_variants() -> [Self; 3] {
         [Self::Always, Self::Never, Self::FlipFlop(Cell::new(false))]
@@ -145,6 +149,8 @@ pub enum ChaosOrd {
     AlwaysEq,
     FlipFlop(Cell<bool>),
 }
+
+iddqd::simple_impl!(ChaosOrd);
 
 impl ChaosOrd {
     pub fn all_variants() -> [Self; 4] {
@@ -219,7 +225,7 @@ macro_rules! impl_test_key_traits {
     };
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Equivalent, Comparable)]
 pub struct TestKey1<'a> {
     // We use u8 since there can only be 256 values, increasing the
     // likelihood of collisions in proptests.
@@ -252,7 +258,7 @@ impl<'a> serde::Serialize for TestKey1<'a> {
 
 impl_test_key_traits!(TestKey1<'_>);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Equivalent)]
 pub struct TestKey2 {
     // char is chosen because the Arbitrary impl for it is biased towards
     // ASCII, increasing the likelihood of collisions.
@@ -272,7 +278,7 @@ impl TestKey2 {
 
 impl_test_key_traits!(TestKey2);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Equivalent)]
 pub struct TestKey3<'a> {
     // &str is a generally open-ended type that probably won't have many
     // collisions.
@@ -293,9 +299,9 @@ impl<'a> TestKey3<'a> {
 impl_test_key_traits!(TestKey3<'_>);
 
 impl IdHashItem for TestItem {
-    type Key<'a> = TestKey1<'a>;
+    type Key = ForLt![<'a> = TestKey1<'a>];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         TestKey1::new(&self.key1)
     }
 
@@ -306,9 +312,9 @@ impl IdHashItem for TestItem {
 impl IdOrdItem for TestItem {
     // A bit weird to return a reference to a u8, but this makes sure
     // reference-based keys work properly.
-    type Key<'a> = TestKey1<'a>;
+    type Key = ForLt![<'a> = TestKey1<'a>];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         TestKey1::new(&self.key1).with_chaos(self.chaos.key1_chaos.clone())
     }
 
@@ -316,14 +322,14 @@ impl IdOrdItem for TestItem {
 }
 
 impl BiHashItem for TestItem {
-    type K1<'a> = TestKey1<'a>;
-    type K2<'a> = TestKey2;
+    type K1 = ForLt![<'a> = TestKey1<'a>];
+    type K2 = ForLt![<'a> = TestKey2];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         TestKey1::new(&self.key1).with_chaos(self.chaos.key1_chaos.clone())
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         TestKey2::new(self.key2).with_chaos(self.chaos.key2_chaos.clone())
     }
 
@@ -331,19 +337,19 @@ impl BiHashItem for TestItem {
 }
 
 impl TriHashItem for TestItem {
-    type K1<'a> = TestKey1<'a>;
-    type K2<'a> = TestKey2;
-    type K3<'a> = TestKey3<'a>;
+    type K1 = ForLt![<'a> = TestKey1<'a>];
+    type K2 = ForLt![<'a> = TestKey2];
+    type K3 = ForLt![<'a> = TestKey3<'a>];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         TestKey1::new(&self.key1).with_chaos(self.chaos.key1_chaos.clone())
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         TestKey2::new(self.key2).with_chaos(self.chaos.key2_chaos.clone())
     }
 
-    fn key3(&self) -> Self::K3<'_> {
+    fn key3(&self) -> Feed<'_, Self::K3> {
         TestKey3::new(&self.key3).with_chaos(self.chaos.key3_chaos.clone())
     }
 
@@ -355,19 +361,21 @@ pub enum MapKind {
     Hash,
 }
 
+// pub(crate) use seal::Is;
+// mod seal {
+//     pub trait Is<Self_> {}
+//     impl<T> Is<Self> for T {}
+// }
+
 /// Represents a map of `TestEntry` values. Used for generic tests and assertions.
 pub trait ItemMap<T>: Clone {
-    type K1<'a>
-    where
-        T: 'a;
-    type RefMut<'a>: IntoRef<'a, T>
-    where
-        Self: 'a;
+    type K1: ForLt;
+    type RefMut: for<'a> ForLt<Of<'a>: IntoRef<'a, T>>;
     type Iter<'a>: Iterator<Item = &'a T>
     where
         Self: 'a,
         T: 'a;
-    type IterMut<'a>: Iterator<Item = Self::RefMut<'a>>
+    type IterMut<'a>: Iterator<Item = Feed<'a, Self::RefMut>>
     where
         Self: 'a;
     type IntoIter: Iterator<Item = T>;
@@ -377,10 +385,10 @@ pub trait ItemMap<T>: Clone {
     fn make_with_capacity(capacity: usize) -> Self;
 
     #[cfg(feature = "serde")]
-    fn serialize_as_map<'a>(&self) -> Result<String, serde_json::Error>
+    fn serialize_as_map<'a>(&'a self) -> Result<String, serde_json::Error>
     where
-        T: 'a + serde::Serialize,
-        Self::K1<'a>: serde::Serialize;
+        T: serde::Serialize,
+        Feed<'a, Self::K1>: serde::Serialize;
     #[cfg(feature = "serde")]
     fn deserialize_as_map<'a, D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -405,22 +413,16 @@ pub trait ItemMap<T>: Clone {
 }
 
 impl<T: Clone + BiHashItem> ItemMap<T> for BiHashMap<T, HashBuilder, Alloc> {
-    type K1<'a>
-        = T::K1<'a>
-    where
-        T: 'a;
-    type RefMut<'a>
-        = bi_hash_map::RefMut<'a, T, HashBuilder>
-    where
-        T: 'a;
+    type K1 = T::K1;
+    type RefMut = ForLt![<'a> = bi_hash_map::RefMut<'a, T, HashBuilder>];
     type Iter<'a>
         = bi_hash_map::Iter<'a, T>
     where
-        T: 'a;
+        Self: 'a;
     type IterMut<'a>
         = bi_hash_map::IterMut<'a, T, HashBuilder, Alloc>
     where
-        T: 'a;
+        Self: 'a;
     type IntoIter = bi_hash_map::IntoIter<T, Alloc>;
 
     fn map_kind() -> MapKind {
@@ -452,10 +454,10 @@ impl<T: Clone + BiHashItem> ItemMap<T> for BiHashMap<T, HashBuilder, Alloc> {
     }
 
     #[cfg(feature = "serde")]
-    fn serialize_as_map<'a>(&self) -> Result<String, serde_json::Error>
+    fn serialize_as_map<'a>(&'a self) -> Result<String, serde_json::Error>
     where
-        T: 'a + serde::Serialize,
-        Self::K1<'a>: serde::Serialize,
+        T: serde::Serialize,
+        Feed<'a, Self::K1>: serde::Serialize,
     {
         let mut out: Vec<u8> = Vec::new();
         let mut ser = serde_json::Serializer::new(&mut out);
@@ -524,22 +526,17 @@ impl<T> ItemMap<T> for IdHashMap<T, HashBuilder, Alloc>
 where
     T: IdHashItem + Clone,
 {
-    type K1<'a>
-        = T::Key<'a>
-    where
-        T: 'a;
-    type RefMut<'a>
-        = id_hash_map::RefMut<'a, T, HashBuilder>
-    where
-        T: 'a;
+    type K1 = T::Key;
+    type RefMut = ForLt![<'a>
+        = id_hash_map::RefMut<'a, T, HashBuilder>];
     type Iter<'a>
         = id_hash_map::Iter<'a, T>
     where
-        T: 'a;
+        Self: 'a;
     type IterMut<'a>
         = id_hash_map::IterMut<'a, T, HashBuilder, Alloc>
     where
-        T: 'a;
+        Self: 'a;
     type IntoIter = id_hash_map::IntoIter<T, Alloc>;
 
     fn map_kind() -> MapKind {
@@ -571,10 +568,10 @@ where
     }
 
     #[cfg(feature = "serde")]
-    fn serialize_as_map<'a>(&self) -> Result<String, serde_json::Error>
+    fn serialize_as_map<'a>(&'a self) -> Result<String, serde_json::Error>
     where
-        T: 'a + serde::Serialize,
-        Self::K1<'a>: serde::Serialize,
+        T: serde::Serialize,
+        Feed<'a, Self::K1>: serde::Serialize,
     {
         let mut out: Vec<u8> = Vec::new();
         let mut ser = serde_json::Serializer::new(&mut out);
@@ -643,24 +640,18 @@ where
 impl<T> ItemMap<T> for IdOrdMap<T>
 where
     T: IdOrdItem + Clone,
-    for<'k> T::Key<'k>: std::hash::Hash,
+    for<'a> T::Key: ForLt<Of<'a>: std::hash::Hash>,
 {
-    type K1<'a>
-        = T::Key<'a>
-    where
-        T: 'a;
-    type RefMut<'a>
-        = id_ord_map::RefMut<'a, T>
-    where
-        T: 'a;
+    type K1 = T::Key;
+    type RefMut = ForLt![<'a> = id_ord_map::RefMut<'a, T>];
     type Iter<'a>
         = id_ord_map::Iter<'a, T>
     where
-        T: 'a;
+        Self: 'a;
     type IterMut<'a>
         = id_ord_map::IterMut<'a, T>
     where
-        T: 'a;
+        Self: 'a;
     type IntoIter = id_ord_map::IntoIter<T>;
 
     fn map_kind() -> MapKind {
@@ -676,10 +667,10 @@ where
     }
 
     #[cfg(feature = "serde")]
-    fn serialize_as_map<'a>(&self) -> Result<String, serde_json::Error>
+    fn serialize_as_map<'a>(&'a self) -> Result<String, serde_json::Error>
     where
-        T: 'a + serde::Serialize,
-        Self::K1<'a>: serde::Serialize,
+        T: serde::Serialize,
+        Feed<'a, Self::K1>: serde::Serialize,
     {
         let mut out: Vec<u8> = Vec::new();
         let mut ser = serde_json::Serializer::new(&mut out);
@@ -739,22 +730,17 @@ impl<T> ItemMap<T> for TriHashMap<T, HashBuilder, Alloc>
 where
     T: TriHashItem + Clone,
 {
-    type K1<'a>
-        = T::K1<'a>
-    where
-        T: 'a;
-    type RefMut<'a>
-        = tri_hash_map::RefMut<'a, T, HashBuilder>
-    where
-        T: 'a;
+    type K1 = T::K1;
+    type RefMut = ForLt![<'a>
+        = tri_hash_map::RefMut<'a, T, HashBuilder>];
     type Iter<'a>
         = tri_hash_map::Iter<'a, T>
     where
-        T: 'a;
+        Self: 'a;
     type IterMut<'a>
         = tri_hash_map::IterMut<'a, T, HashBuilder, Alloc>
     where
-        T: 'a;
+        Self: 'a;
     type IntoIter = tri_hash_map::IntoIter<T, Alloc>;
 
     fn map_kind() -> MapKind {
@@ -786,10 +772,10 @@ where
     }
 
     #[cfg(feature = "serde")]
-    fn serialize_as_map<'a>(&self) -> Result<String, serde_json::Error>
+    fn serialize_as_map<'a>(&'a self) -> Result<String, serde_json::Error>
     where
-        T: 'a + serde::Serialize,
-        Self::K1<'a>: serde::Serialize,
+        T: serde::Serialize,
+        Feed<'a, Self::K1>: serde::Serialize,
     {
         let mut out: Vec<u8> = Vec::new();
         let mut ser = serde_json::Serializer::new(&mut out);
@@ -877,7 +863,7 @@ impl<'a, T: IdHashItem> IntoRef<'a, T>
 #[cfg(feature = "std")]
 impl<'a, T: IdOrdItem> IntoRef<'a, T> for id_ord_map::RefMut<'a, T>
 where
-    T::Key<'a>: std::hash::Hash,
+    T::Key: ForLt<Of<'a>: std::hash::Hash>,
 {
     fn into_ref(self) -> &'a T {
         self.into_ref()

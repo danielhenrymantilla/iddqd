@@ -4,7 +4,8 @@ use crate::hegel_support::{
 };
 use hegel::{TestCase, generators as gs};
 use iddqd::{
-    BiHashItem, BiHashMap, bi_hash_map, bi_upcast, internal::ValidateCompact,
+    BiHashItem, BiHashMap, Feed, ForLt, bi_hash_map, bi_upcast,
+    internal::ValidateCompact,
 };
 use iddqd_test_utils::{
     borrowed_item::BorrowedItem,
@@ -27,14 +28,14 @@ struct SimpleItem {
 }
 
 impl BiHashItem for SimpleItem {
-    type K1<'a> = u32;
-    type K2<'a> = char;
+    type K1 = ForLt![<'a> = u32];
+    type K2 = ForLt![<'a> = char];
 
-    fn key1(&self) -> Self::K1<'_> {
+    fn key1(&self) -> Feed<'_, Self::K1> {
         self.key1
     }
 
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         self.key2
     }
 
@@ -744,12 +745,12 @@ fn entry_nonunique_writes_through_both_keys() {
     }
 
     impl BiHashItem for BiItem {
-        type K1<'a> = u32;
-        type K2<'a> = u32;
-        fn key1(&self) -> Self::K1<'_> {
+        type K1 = ForLt![<'a> = u32];
+        type K2 = ForLt![<'a> = u32];
+        fn key1(&self) -> Feed<'_, Self::K1> {
             self.k1
         }
-        fn key2(&self) -> Self::K2<'_> {
+        fn key2(&self) -> Feed<'_, Self::K2> {
             self.k2
         }
         bi_upcast!();
@@ -1116,12 +1117,12 @@ mod macro_tests {
     }
 
     impl BiHashItem for User {
-        type K1<'a> = u32;
-        type K2<'a> = &'a str;
-        fn key1(&self) -> Self::K1<'_> {
+        type K1 = ForLt![<'a> = u32];
+        type K2 = ForLt![<'a> = &'a str];
+        fn key1(&self) -> Feed<'_, Self::K1> {
             self.id
         }
-        fn key2(&self) -> Self::K2<'_> {
+        fn key2(&self) -> Feed<'_, Self::K2> {
             &self.name
         }
         bi_upcast!();
@@ -1242,15 +1243,13 @@ struct PanickyHashItem {
 
 #[cfg(all(feature = "default-hasher", feature = "allocator-api2"))]
 impl BiHashItem for PanickyHashItem {
-    type K1<'a> = iddqd_test_utils::panic_safety::PanickyKey;
-    type K2<'a> = iddqd_test_utils::panic_safety::PanickyKey;
-
-    fn key1(&self) -> Self::K1<'_> {
+    type K1 = ForLt![<'a> = iddqd_test_utils::panic_safety::PanickyKey];
+    type K2 = ForLt![<'a> = iddqd_test_utils::panic_safety::PanickyKey];
+    fn key1(&self) -> Feed<'_, Self::K1> {
         iddqd_test_utils::panic_safety::observe_panicky_call("key1");
         iddqd_test_utils::panic_safety::PanickyKey(self.key1)
     }
-
-    fn key2(&self) -> Self::K2<'_> {
+    fn key2(&self) -> Feed<'_, Self::K2> {
         iddqd_test_utils::panic_safety::observe_panicky_call("key2");
         iddqd_test_utils::panic_safety::PanickyKey(self.key2)
     }

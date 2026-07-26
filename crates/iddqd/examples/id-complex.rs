@@ -1,7 +1,8 @@
 //! An example demonstrating `IdOrdMap` use with complex borrowed keys.
 
 use iddqd::{
-    Comparable, Equivalent, IdOrdItem, IdOrdMap, id_ord_map::Entry, id_upcast,
+    Comparable, Equivalent, Feed, ForLt, IdOrdItem, IdOrdMap,
+    id_ord_map::Entry, id_upcast,
 };
 use std::path::{Path, PathBuf};
 
@@ -16,7 +17,9 @@ struct MyStruct {
 
 /// The map will be indexed uniquely by (b, c, d). Note that this is a
 /// borrowed key that can be constructed efficiently.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Comparable, Equivalent,
+)]
 struct MyKey<'a> {
     b: usize,
     c: &'a Path,
@@ -24,9 +27,9 @@ struct MyKey<'a> {
 }
 
 impl IdOrdItem for MyStruct {
-    type Key<'a> = MyKey<'a>;
+    type Key = ForLt![<'a> = MyKey<'a>];
 
-    fn key(&self) -> Self::Key<'_> {
+    fn key(&self) -> Feed<'_, Self::Key> {
         MyKey { b: self.b, c: &self.c, d: &self.d }
     }
 
